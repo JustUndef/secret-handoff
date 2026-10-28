@@ -13,6 +13,8 @@ foreach ($part in $numericVersion.Split('.')) {
     if ([long]$part -gt 65534) { throw 'RELEASE_VERSION_INVALID' }
 }
 $root = Split-Path -Parent $PSScriptRoot
+$runtimeVersion = (Get-Content -LiteralPath (Join-Path $root 'release-runtime.json') -Raw | ConvertFrom-Json).version
+if ($runtimeVersion -cnotmatch '^10\.0\.(0|[1-9][0-9]*)$') { throw 'RELEASE_RUNTIME_INVALID' }
 if (-not $DotnetPath) { $DotnetPath = Join-Path $env:USERPROFILE '.dotnet\dotnet.exe' }
 if (-not $IsccPath) { $IsccPath = (Get-Command ISCC.exe -ErrorAction Stop).Source }
 if (-not (Test-Path -LiteralPath $DotnetPath -PathType Leaf)) { throw 'RELEASE_SDK_MISSING' }
@@ -39,10 +41,11 @@ foreach ($key in $settings.Keys) {
 Push-Location -LiteralPath $root
 try {
     # Only release restore uses the official public feed for the bundled runtime packs.
-    & $DotnetPath restore src/SecretHandoff/SecretHandoff.csproj -r win-x64 --source https://api.nuget.org/v3/index.json -p:SelfContained=true -v quiet
+    & $DotnetPath restore src/SecretHandoff/SecretHandoff.csproj -r win-x64 --source https://api.nuget.org/v3/index.json -p:SelfContained=true "-p:RuntimeFrameworkVersion=$runtimeVersion" -v quiet
     if ($LASTEXITCODE -ne 0) { throw 'RELEASE_RESTORE_FAILED' }
     & $DotnetPath publish src/SecretHandoff/SecretHandoff.csproj -c Release -r win-x64 --self-contained true --no-restore -o $publish `
         "-p:Version=$Version" "-p:AssemblyVersion=$numericVersion.0" "-p:FileVersion=$numericVersion.0" `
+        "-p:RuntimeFrameworkVersion=$runtimeVersion" `
         -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -p:UseSharedCompilation=false -m:1 -nr:false -v quiet
     if ($LASTEXITCODE -ne 0) { throw 'RELEASE_PUBLISH_FAILED' }
     foreach ($file in @('README.md', 'ARCHITECTURE.md', 'TESTING.md', 'RELEASING.md', 'LICENSE')) {

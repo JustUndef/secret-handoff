@@ -1,6 +1,12 @@
 param([Parameter(Mandatory = $true)][string]$AppDirectory)
 $ErrorActionPreference = 'Stop'
 $app = (Resolve-Path -LiteralPath $AppDirectory).ProviderPath
+$expectedRuntime = (Get-Content -LiteralPath (Join-Path (Split-Path -Parent $PSScriptRoot) 'release-runtime.json') -Raw | ConvertFrom-Json).version
+$runtime = Get-Content -LiteralPath (Join-Path $app 'SecretHandoff.runtimeconfig.json') -Raw | ConvertFrom-Json
+if (@($runtime.runtimeOptions.includedFrameworks).Count -ne 2) { throw 'PACKAGE_RUNTIME_MISSING' }
+foreach ($framework in $runtime.runtimeOptions.includedFrameworks) {
+    if ($framework.version -ne $expectedRuntime) { throw 'PACKAGE_RUNTIME_VERSION_FAILED' }
+}
 foreach ($name in @('SecretHandoff.exe', 'coreclr.dll', 'System.Windows.Forms.dll', 'Invoke-Handoff.ps1', 'LICENSE')) {
     if (-not (Test-Path -LiteralPath (Join-Path $app $name) -PathType Leaf)) { throw 'PACKAGE_FILE_MISSING' }
 }

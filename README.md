@@ -58,4 +58,4 @@ Das Werkzeug soll versehentliche dauerhafte Ablage und Offenlegung im Chat verme
 
 Noch ausstehend sind insbesondere die manuelle Bedienprüfung, der tatsächliche Abbruchknopf von Codex Desktop, die vollständige Prüfung aller MVP-Kriterien und die vollständige Paketabnahme auf einem sauberen Windows-System. Strg+C in einem Codex-Werkzeugprozess wurde am 27. Oktober separat geprüft; am 28. Oktober zusätzlich das harte Beenden des zentralen PowerShell-Aufrufers mit synthetischem Ziel und Enkel. Das belegt nicht automatisch das Verhalten anderer Abbruchwege. Nächste Schritte und Nachweisgrenzen: [TESTING.md](TESTING.md).
 
-Arbeitsregeln für weitere Änderungen: [AGENTS.md](AGENTS.md).
+Lokale Arbeitsregeln können ergänzend in einer nicht veröffentlichten `AGENTS.md` stehen.
