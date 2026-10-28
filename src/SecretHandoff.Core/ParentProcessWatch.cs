@@ -3,7 +3,7 @@ using static SecretHandoff.Core.NativeMethods;
 
 namespace SecretHandoff.Core;
 
-public sealed class ParentWatchException(Status status) : Exception("Aufruferüberwachung nicht verfügbar.")
+public sealed class ParentWatchException(Status status) : Exception("Caller monitoring unavailable.")
 {
     public Status Status { get; } = status;
 }

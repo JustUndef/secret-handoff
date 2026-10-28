@@ -40,7 +40,8 @@ try {
         finally { $child.Dispose() }
     }
 }
-# Never forward target stdout/stderr or exceptions; the GUI launcher produces neither.
+# The launcher discards target stdout/stderr; CLI configuration failures use fixed diagnostics.
+# This wrapper's own stdout is restricted to fixed status categories.
 if ($invocationFailed -and $code -eq 8) { Write-Output 'HANDOFF_INVOKE_FAILED' }
 else { Write-Output ('HANDOFF_EXIT_{0}' -f $code) }
 exit $code

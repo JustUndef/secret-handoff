@@ -101,7 +101,7 @@ internal static partial class Program
                 executable = remoteExecutable ? @"Z:\synthetic\worker.exe" : probe,
                 arguments = new[] { "fail" },
                 workingDirectory = remoteExecutable ? Path.GetDirectoryName(probe) : @"Z:\synthetic",
-                secrets = new[] { new { name = "EXAMPLE_API_TOKEN", description = "Synthetischer Testwert" } }
+                secrets = new[] { new { name = "EXAMPLE_API_TOKEN", description = "Synthetic test value" } }
             }));
             var metadata = new PathMetadataProbe { Drive = path => path == @"Z:\" ? DriveType.Network : DriveType.Fixed };
             PathRejected(() => RequestLoader.Load(request, new LocalPathPolicy(metadata)));

@@ -1,191 +1,218 @@
-# Architektur und MVP
+# Architecture and MVP
 
-Stand: 28. Oktober 2026. **MVP-Spezifikation mit synthetischem Prototyp, keine gehärtete Sicherheitssoftware.** Die folgenden Festlegungen beschreiben das MVP-Soll. Der implementierte Stand, ausgeführte Prüfungen und noch offene Nachweise stehen in [TESTING.md](TESTING.md).
+As of October 28, 2026. **MVP specification with a synthetic prototype, not hardened security software.** The requirements below describe the intended MVP. Implemented behavior, executed checks, and outstanding evidence are documented in [TESTING.md](TESTING.md).
 
-## 1. Ausgangslage und Nachweisstand
+## 1. Background and evidence
 
-Der Nutzer arbeitet in Codex Desktop und bewahrt private Passwörter in seinem Passwortmanager auf. Ein allgemeiner lokaler Launcher soll pro Auftrag benötigte Werte entgegennehmen, den Zielaufruf zeigen und ihn nach manueller Freigabe starten. Es soll kein neues Übergabeskript für jedes Projekt nötig sein.
+The user works in Codex Desktop and keeps private passwords in a password manager. A general local launcher should accept the values needed for each request, display the target invocation, and start it after manual approval. A separate handoff script should not be necessary for every project.
 
-| Gegenstand | Nachweisstand | Aussagegrenze |
+| Item | Evidence | Limit of the evidence |
 | --- | --- | --- |
-| PowerShell-/WinForms-Referenz | Laut Projektauftrag aus Codex Desktop erfolgreich mit lokaler Eingabe getestet; Identitätsaufruf bestätigte `SERVICE_ACCOUNT` | Fester Einzelaufruf, kein allgemeiner Launcher; keine privaten Vault-Inhalte oder Kontakte abgerufen |
-| Synthetischer Environment-Test | Laut Projektauftrag Übergabe mit `op run --environment` an einen Node-Prüfprozess erfolgreich | Environment-Auswahl begrenzt nicht die Berechtigung des angemeldeten Accounts |
-| Referenzdateien in der Dokumentationsrunde | Nur die zwei ausdrücklich freigegebenen Skripte gelesen, nichts ausgeführt oder übernommen | Kein erneuter Kontozugriff |
-| Neuer Workspace | Zu Beginn leer; keine vorhandenen AGENTS.md in Workspace oder geprüften übergeordneten Verzeichnissen, kein Git-Repository | Inzwischen eigener Prototyp mit synthetischen Tests; keine private Historie übernommen |
-| Lokale Entwicklungsmittel | Der PATH-Host unter `C:\Program Files\dotnet` meldet SDKs für .NET 7, 8 und 9; der gesondert geprüfte Host `C:\Users\<Benutzer>\.dotnet\dotnet.exe` meldet SDK **10.0.203**. .NET-10-Desktop-Runtime unter Program Files: **10.0.13**, unter dem Benutzerpfad: **10.0.7** | Prototyp erfolgreich mit dem Benutzer-SDK gebaut und getestet |
+| PowerShell/WinForms reference | The project brief reported successful local input testing from Codex Desktop; an identity invocation confirmed `SERVICE_ACCOUNT` | A fixed individual invocation, not a general launcher; no private vault contents or contacts retrieved |
+| Synthetic environment test | The project brief reported successful handoff through `op run --environment` to a Node probe | Environment selection does not limit the logged-in account's permissions |
+| Reference files during the documentation phase | Only the two explicitly approved general scripts were read; nothing was executed or copied | No renewed account access |
+| New workspace | Initially empty, with no AGENTS.md in the workspace or checked parent directories and no Git repository | Now has its own prototype and synthetic tests; no private history imported |
+| Local development tools at initial verification | The PATH host under `C:\Program Files\dotnet` reported .NET 7, 8, and 9 SDKs. A separately checked host under the user profile reported SDK **10.0.203**. .NET 10 Desktop Runtime versions were **10.0.13** under Program Files and **10.0.7** under the user profile | The prototype was successfully built and tested using the user-profile SDK; these versions describe that workstation, not contributor prerequisites |
 
-Die Referenz zeigt verwendbare UI-Bausteine. Sie trimmt die Eingabe, liest Zielausgaben vollständig in den Speicher und beendet im Timeout nur den direkten Prozess. Diese Eigenschaften werden nicht als allgemeine MVP-Regeln übernommen. Ihre erfolgreiche Einzelprüfung belegt keine Härtung.
+The reference demonstrated usable UI components. It trims input, reads all target output into memory, and terminates only the direct process on timeout. Those properties are not adopted as general MVP rules. A successful individual test does not demonstrate hardening.
 
-Vorherige Produktprüfungen werden nicht wiederholt. Service Accounts begrenzen Berechtigungen, ersetzen aber den gewünschten manuellen Dialog nicht. Eine weitere permanente Ablage ihres Tokens wurde verworfen. Summon, Keygrant, KeePass/KPScript und Pinentry liefern mögliche Teile; eine für diesen Ablauf vollständig geprüfte Kombination liegt nicht vor. Daraus folgt keine Behauptung, es gebe keine Alternativen.
+Earlier product evaluations are not repeated. Service accounts limit permissions but do not replace the desired manual dialog. Another permanent store for their token was rejected. Summon, Keygrant, KeePass/KPScript, and Pinentry offer potential components; a fully verified combination for this workflow is not established. This does not imply that no alternatives exist.
 
-## 2. Ziel und MVP-Grenze
+## 2. Goal and MVP boundary
 
-Ein portables Windows-Programm öffnet einen lokalen Dialog und startet einen **neuen** Prozess mit einmalig eingegebenen Secret-Werten als Umgebungsvariablen. Der Nutzer genehmigt genau die angezeigten Metadaten. Das Programm ist weder Passwortmanager noch Berechtigungsbroker eines Providers.
+A portable Windows application opens a local dialog and launches a **new** process with one-time secret input supplied as environment variables. The user approves exactly the metadata displayed. The program is neither a password manager nor a provider's authorization broker.
 
-Enthalten: Auftragsprüfung, vollständige Vorschau, verdeckte Eingabe, Einfügen, ausdrücklicher Start, Abbruch, feste Zeitlimits, Ausschluss gleichzeitiger Aufträge, Statuscodes, Prozessbaum-Bereinigung und synthetische Tests.
+Included: request validation, complete preview, masked input, paste actions, explicit launch, cancellation, fixed timeouts, prevention of concurrent requests, status codes, process-tree cleanup, and synthetic tests.
 
-Nicht enthalten: Passwortmanager-API, Dienstezugriff im Kern, Hintergrunddienst, Webserver, Remote-IPC, nachträgliche Änderung laufender Desktop-Prozesse, automatische Agent-Tool-Freigabe, UAC-Erhöhung, interaktive Terminal-Sitzung, persistenter Auftragsspeicher oder Secret-Tresor. Ein Zielprogramm darf ein eigenes GUI-Fenster öffnen. Programme, die nur einen bestehenden Prozess ansprechen oder sich über Dienste ablösen, sind keine unterstützten betreuten Aufträge. 1Password kann später wie jedes andere explizit genehmigte Zielprogramm gestartet werden.
+Excluded: password-manager API integration, service access in the core, background service, web server, remote IPC, modifications to existing desktop processes, automatic approval of agent tools, UAC elevation, interactive terminal sessions, persistent request storage, and a secret vault. A target may open its own GUI window. Programs that only activate an existing process or detach through services are not supported managed tasks. A password-manager CLI could later be launched like any other explicitly approved target program.
 
-## 3. Technikentscheidung
+## 3. Technology decision
 
-**Empfehlung: C#, WinForms, .NET 10 LTS; erste unterstützte Plattform Windows 11 x64.** Native Formularfelder und Zwischenablagezugriff passen zum kleinen Windows-Dialog. Typisierte Aufträge und ein separat testbarer Ablauf vermeiden die wachsende Fehlerfläche eines allgemeinen PowerShell-Launchers. WinForms ist ein Windows-Desktop-Framework; .NET 10 ist die aktuelle LTS-Linie. Das ist eine Projektentscheidung auf Basis der [WinForms-Dokumentation](https://learn.microsoft.com/en-us/dotnet/desktop/winforms/overview/) und der [Microsoft-Supportpolicy](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core), geprüft am 27. Oktober 2026.
+**C#, WinForms, .NET 10 LTS; initial supported platform: Windows 11 x64.** Native controls and clipboard access suit the small Windows dialog. Typed requests and a separately testable lifecycle avoid the growing error surface of a general PowerShell launcher. WinForms is a Windows desktop framework; .NET 10 is the chosen LTS line. The decision was checked on October 27, 2026 against the [WinForms documentation](https://learn.microsoft.com/en-us/dotnet/desktop/winforms/overview/) and [Microsoft support policy](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core).
 
-Der Release-Bau erzeugt eine lokal entpackbare, selbstenthaltende Veröffentlichung und einen Benutzer-Installer ohne global vorausgesetzte .NET-Laufzeit; siehe [RELEASING.md](RELEASING.md). Sie muss bei Runtime-Sicherheitsupdates neu gebaut werden. Der aktuelle Prototyp ist frameworkabhängig und verwendet die vorhandene Desktop-Runtime. Der nachträglich beauftragte Installer erweitert den ursprünglichen MVP-Umfang; ein Autoupdater bleibt ausgeschlossen. Das vorhandene .NET-10-SDK lässt sich über `C:\Users\<Benutzer>\.dotnet\dotnet.exe` ausdrücklich auswählen; eine Neuinstallation oder globale PATH-Änderung ist dafür nicht nötig. Die erste Prüfung nur des PATH-Hosts hatte diese separate Installation nicht erfasst.
+Release packaging produces a self-contained extractable application and a per-user installer without requiring a globally installed .NET runtime; see [RELEASING.md](RELEASING.md). Packages must be rebuilt for runtime security updates. The development prototype is framework-dependent and uses an installed Desktop Runtime. The subsequently requested installer extends the original MVP scope; an automatic updater remains excluded. Build scripts accept an explicit SDK path and otherwise look under the user profile, then on PATH. No global PATH change or tool installation is performed. The SDK version is selected by `global.json`; contributor setup is documented in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Eine GUI-EXE (`WinExe`) enthält Eingabe und Ablauf. Der implementierte allgemeine Aufruf lautet `SecretHandoff.exe --request <absoluter JSON-Pfad>`. Ohne Argumente öffnet sie eine Dateiauswahl. Der Dateiauswahlpfad wird nicht als Verlauf gespeichert. Der Aufrufer benötigt kein interaktives Terminal und übergibt nur einen Metadatenpfad. Er muss bei Bedarf über seine Prozess-API auf die GUI-EXE warten und deren Exitcode auswerten; ein Shell-Aufruf wartet bei GUI-Programmen nicht zwingend automatisch. Das zentrale Skript `scripts/Invoke-Handoff.ps1` übernimmt dieses Warten. Keine Integration in die Umgebung bereits laufender Codex-Prozesse wird versprochen.
+The EXE contains WinForms input and lifecycle handling and now uses **`OutputType=Exe` with `DisableWinExeOutputInference=true`**, replacing `WinExe`. The actual apphost has PE subsystem `WINDOWS_CUI` (3). PowerShell and cmd can invoke it directly, wait for completion, and receive its exit code. `--help` runs before WinForms initialization, the mutex, and the request dialog, writes fixed help to stdout, and exits 0. Invalid CLI invocations return fixed stderr diagnostics and code 5, with no raw arguments, exceptions, or modal error dialog. Normal requests remain silent on stdout/stderr; the target still receives only the existing `NUL` handles.
 
-Für Agent-Aufträge bindet das zentrale Skript den Launcher an seinen eigenen Prozess. Dazu dient die optionale EXE-Schnittstelle `--request <Pfad> --watch-parent <PID> <Startzeit-FILETIME>`. Der Launcher öffnet einen nicht vererbbaren Windows-Prozesshandle mit `SYNCHRONIZE` und `PROCESS_QUERY_LIMITED_INFORMATION`, vergleicht die Windows-Erzeugungszeit und behält denselben Handle bis zum Auftragsende. Damit wird eine später wiederverwendete PID nicht mit dem ursprünglichen Aufrufer verwechselt. Geprüft werden ausschließlich Lebensdauer und Zeitstempel; es gibt weder Speicherauslesen noch ein Berechtigungsversprechen aufgrund dieser Metadaten. Grundlagen: [OpenProcess](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-openprocess), [GetProcessTimes](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getprocesstimes) und [Windows-Prozess als Synchronisationsobjekt](https://learn.microsoft.com/en-us/windows/win32/sync/synchronization-objects).
+The manifest sets `consoleAllocationPolicy=detached`: on Windows 11 24H2 and later, Explorer launch does not allocate a new console, while an existing console remains usable. Older Windows versions may display an additional console window; this variant has not been practically verified. The GUI workflow still needs no prepared terminal. Reference: [Microsoft: Console Allocation Policy](https://learn.microsoft.com/en-us/windows/console/console-allocation-policy). With no arguments, a local file picker opens without saving history. The shared JSON wrapper still waits and adds caller binding. No integration into the environment of already running Codex processes is promised.
 
-Ein Hintergrundtask beobachtet den Handle mit begrenzten Warteintervallen von 50 ms. Bei erkanntem Prozessende oder einem Wartefehler wird der Auftrag abgebrochen. Der Abbruchtoken des Prozessrunners ist direkt mit dieser Überwachung verbunden, sodass die Zielbereinigung unabhängig von der UI-Ereignisschleife anläuft. Vor Freigabe schließt der Dialog ohne Zielstart; während der Ausführung schließt er nach der Bereinigung automatisch. Bereits erzeugte Seiteneffekte können durch eine zeitgleiche Erkennung des Aufruferendes nicht rückgängig gemacht werden. Beim Freigeben der Überwachung wird zuerst ihr Task beendet und danach der Handle geschlossen.
+For agent tasks, the shared wrapper binds the launcher to its own process using the optional interface `--request <path> --watch-parent <PID> <creation-FILETIME>`. The launcher opens a non-inheritable Windows process handle with `SYNCHRONIZE` and `PROCESS_QUERY_LIMITED_INFORMATION`, compares the Windows creation time, and retains that same handle until the request ends. This prevents a subsequently reused PID from being mistaken for the original caller. Only lifetime and timestamps are checked; no process memory is read, and the metadata proves no authorization. References: [OpenProcess](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-openprocess), [GetProcessTimes](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getprocesstimes), and [process synchronization objects](https://learn.microsoft.com/en-us/windows/win32/sync/synchronization-objects).
 
-Fehlende bzw. bereits beendete Aufrufer führen ohne Zielstart zu `CANCELLED`, ein nicht passender Zeitstempel zu `INVALID_REQUEST`, fehlende Rechte zur Überwachung zu `START_FAILED`. Bei gebundenen Aufrufen werden Start-/Konfigurationsfehler über den Exitcode zurückgegeben, ohne einen verwaisten modalen Fehlerdialog zu öffnen. Das JSON-Format bleibt unverändert und enthält keine Prozessbindung.
+A background task observes the handle with bounded 50 ms waits. Detected process termination or a wait failure cancels the request. The process runner's cancellation token is linked directly to this watch, so cleanup starts independently of the UI event loop. Before approval, the dialog closes without launching a target; during execution, it closes automatically after cleanup. Side effects already performed cannot be undone by simultaneous detection of caller termination. Disposing the watch stops its task before closing the handle.
 
-Der Aufrufervertrag bleibt: Ein Codex-Auftragsabbruch muss entweder den Launcher direkt beenden oder den gebundenen Aufruferprozess beenden. Wird nur das Warten eingestellt und der gebundene Prozess bleibt am Leben, kann der Launcher diesen Auftragssachverhalt nicht erkennen. Der tatsächliche Desktop-Abbruchknopf ist weiterhin gesondert nachzuweisen. Der manuelle Start ohne Bindung bleibt unabhängig und wird im lokalen Fenster beendet.
+Missing or already terminated callers produce `CANCELLED` without target launch; a mismatched timestamp produces `INVALID_REQUEST`; insufficient monitoring rights produce `START_FAILED`. Bound invocations return startup/configuration failures through their exit code without leaving an orphaned modal error dialog. The JSON format is unchanged and contains no process binding.
 
-| Baustein | Verantwortung |
+The caller contract remains: cancelling a Codex task must terminate either the launcher directly or the bound caller process. If waiting merely stops while the bound process remains alive, the launcher cannot detect that task state. The actual desktop cancel button still needs separate verification. Manual launch without binding remains independent and is stopped in its local window.
+
+| Component | Responsibility |
 | --- | --- |
-| RequestLoader / Validator | Begrenztes JSON einlesen, Pfade und Namen prüfen, unveränderlichen Auftrag erzeugen |
-| LocalPathPolicy | Lokales Laufwerk und jede kanonische Pfadkomponente prüfen; Netzlaufwerke, DOS-Aliase und Reparse Points abweisen |
-| ApprovalForm | Vollständige Vorschau, lokale Eingabe im STA-Thread, Start-/Abbruchereignisse |
-| ApprovalLifecycle | Einmalige Ausführung und Abbruch besitzen; Runner und Bereinigung unabhängig von UI-Fortsetzungen abwarten |
-| ParentProcessWatch | Geprüften Aufruferhandle beobachten; beim erkannten Ende Abbruch auslösen; Handle und Task freigeben |
-| EnvironmentPolicy | Neuen Umgebungsblock aus festgelegter Basis und eingegebenen Werten aufbauen |
-| WindowsProcessRunner | Win32-Start, begrenzte Handle-Vererbung, Job Object, Warten und Beenden |
-| SyntheticProbe / Tests | Lokale Prüfprozesse ohne Netz-/Kontozugriffe; ausschließlich synthetische Werte |
+| RequestLoader / Validator | Read bounded JSON, validate paths and names, create an immutable request |
+| LaunchOptions / CliHelp | Parse CLI options before the first `--`, capture caller CWD, create a direct snapshot or output help |
+| LocalPathPolicy | Check the local drive and every canonical path component; reject network drives, DOS aliases, and reparse points |
+| ApprovalForm | Complete preview, local input on the STA thread, launch/cancel events |
+| ApprovalLifecycle | Own single execution and cancellation; await runner and cleanup independently of UI continuations |
+| ParentProcessWatch | Observe the verified caller handle, cancel on detected termination, release the handle and task |
+| EnvironmentPolicy | Construct a new environment block from the fixed base and entered values |
+| WindowsProcessRunner | Win32 launch, restricted handle inheritance, Job Object, waiting and termination |
+| SyntheticProbe / Tests | Local probe processes without network/account access; synthetic values only |
 
-Kein allgemeines Plugin-System und kein lokaler Agent-Server. Der kleine Win32-Adapter ist nötig, um die Job-Zuordnung bereits bei der Prozesserzeugung vorzunehmen. Ein ungeschütztes `Process.Start()` mit nachträglichem Zuordnen wäre für die geforderte Abbruch-/Absturzbehandlung unzureichend.
+There is no general plugin system or local agent server. The small Win32 adapter is necessary to assign the job during process creation. An unprotected `Process.Start()` followed by later assignment would be insufficient for the required cancellation/crash behavior.
 
-## 4. Auftragsvertrag
+## 4. Request contract
 
-Die UTF-8-JSON-Datei enthält ausschließlich Secret-Namen und Beschreibungen sowie Zielprogramm, Argumente und Arbeitsverzeichnis. Keine Werte, Platzhalterersetzung, eingebetteten Skripte oder frei definierbaren Umgebungswerte. Strukturelles Beispiel mit absichtlich nicht vorausgesetzten Pfaden:
+### Direct CLI input (implemented)
+
+```text
+SecretHandoff.exe --secret NAME [--description TEXT] [--secret NAME ...]
+  [--working-directory DIRECTORY] [--watch-parent PID FILETIME] -- ABSOLUTE_PROGRAM.exe [ARGUMENTS...]
+SecretHandoff.exe --request ABSOLUTE_JSON_PATH [--watch-parent PID FILETIME]
+SecretHandoff.exe --help
+SecretHandoff.exe
+```
+
+`--secret` declares names only, never values. Between 1 and 16 names are required. An optional `--description` must immediately follow its `--secret NAME`, at most once; the default description is empty. Other option ordering is free. Options are exact and case-sensitive, without short forms or `--option=value`. Option values must not begin with `--`. `--request`, `--working-directory`, and `--watch-parent` cannot be repeated. `--help` is valid only by itself; no arguments opens the file picker. File-mode options cannot be combined with direct-mode options or a target separator. Missing values, unknown options, or a missing target/secret are rejected before a dialog opens.
+
+Everything after the first `--` is passed unchanged as the target program and argument list, including empty arguments, additional separators, and options resembling launcher options. The program remains an absolute local EXE path; no shell or PATH lookup. The invoking shell processes its own quoting before passing arguments. For empty arguments and embedded quotes from PowerShell, use modern native argument passing (PowerShell 7.3 or later) or a process API with `ArgumentList`; the launcher cannot undo legacy shell quoting.
+
+The parser captures `Environment.CurrentDirectory` on entry. Without `--working-directory`, this captured caller directory is used. Ordinary relative paths are resolved against exactly this snapshot; absolute paths are checked directly. Empty, drive-relative (`C:folder`), and root-relative (`\folder`) paths are invalid. The existing path policy checks the resulting path, including dot segments, and creates an absolute canonical snapshot. There is no fallback to the installation directory and no environment-variable expansion.
+
+`RequestLoader.Create` creates the direct immutable `LaunchRequest` with the fixed source label `(Direct invocation)`. No temporary file is written. `RequestLoader.Load` continues to load the unchanged JSON contract. Both use `LaunchRequest.Revalidate`, the same path/environment policies, approval dialog, `ApprovalLifecycle`, `ParentProcessWatch`, and `WindowsProcessRunner`. The shared validator also checks description length and display characters. The dialog shows the complete absolute working directory; launch and preview use the same snapshot. The runner revalidates paths before launch but does not resolve relative inputs again.
+
+`--watch-parent PID FILETIME` is optional in both modes, before the target separator. PID and UTC Windows creation time must be positive decimal numbers; the launcher's own PID is disallowed. Monitoring, cancellation limitations, and error codes from section 3 remain unchanged. Direct invocations are unbound without this option; the existing JSON wrapper supplies it automatically.
+
+Complete options, defaults, examples, and exit codes: [README.md](README.md) and `SecretHandoff.exe --help`. Both input modes retain the fixed 5-minute approval limit, 15-minute execution limit, and 5-second cleanup budget.
+
+### JSON input (unchanged contract)
+
+The UTF-8 JSON file contains only secret names/descriptions, the target program, arguments, and working directory. No values, placeholder substitution, embedded scripts, or arbitrary environment values. Structural example with illustrative paths that are not assumed to exist:
 
 ```json
 {
   "executable": "C:\\Tools\\ExampleWorker.exe",
-  "arguments": ["--mode", "check", "--label", "Beispielauftrag"],
+  "arguments": ["--mode", "check", "--label", "Example task"],
   "workingDirectory": "D:\\Projects\\Example",
   "secrets": [
     {
       "name": "EXAMPLE_API_TOKEN",
-      "description": "API-Token für diesen Beispielauftrag"
+      "description": "API token for this example task"
     }
   ]
 }
 ```
 
-Die Dateiendung ist frei; `.handoff.json` ist die empfohlene Konvention. Es gibt zunächst genau diesen Vertrag ohne optionale Erweiterungsfelder. Validierung erfolgt **vor** der Eingabe:
+The extension is unrestricted; `.handoff.json` is the recommended convention. Initially, this is the sole contract, without optional extension fields. Validation happens **before** value entry:
 
-- Unbekannte oder doppelte JSON-Schlüssel, falsche Typen und fehlende Pflichtfelder ablehnen. Grenzen: 64 KiB Datei, 1–16 Secrets, 128 Argumente, 128 Zeichen je Name, 512 je Beschreibung. Die serialisierte Windows-Aufrufzeile einschließlich Abschluss-NUL darf 32.767 UTF-16-Codeeinheiten nicht überschreiten.
-- `executable` ist ein bestehender absoluter lokaler `.exe`-Pfad, `workingDirectory` ein bestehender absoluter lokaler Ordner. Auch die Auftragsdatei unterliegt der lokalen Pfadprüfung. Keine UNC-/Gerätepfade, PATH-Suche, Dateizuordnung oder Umgebungsvariablen-Ersetzung.
-- Argumente sind einzelne Zeichenketten, dürfen leer sein und enthalten niemals Secret-Werte oder Secret-Referenzen. Keine Ersetzung von `%NAME%`, `$env:NAME` oder `${NAME}` durch den Launcher. NUL ablehnen; Steuerzeichen in Argumenten sichtbar als Escape-Sequenz darstellen. Beschreibungen/Pfade dürfen keine irreführenden Steuer- oder Bidi-Formatzeichen enthalten.
-- Namen nach `[A-Za-z_][A-Za-z0-9_]*`, Duplikate ohne Beachtung der Groß-/Kleinschreibung ablehnen. Alle Secrets sind erforderlich.
-- Metadaten können ihrerseits sensibel sein. Keine automatische Übernahme von Werten aus Chat oder Zwischenablage in JSON; keine rohen Auftragsdateien in Fehlerlogs. Der Launcher kann einen versehentlich in Metadaten gespeicherten Secret-Wert nicht zuverlässig erkennen.
+- Reject unknown or duplicate JSON keys, incorrect types, and missing required fields. Limits: 64 KiB file, 1–16 secrets, 128 arguments, 128 characters per name, 512 per description. The serialized Windows command line, including terminating NUL, must not exceed 32,767 UTF-16 code units.
+- `executable` is an existing absolute local `.exe` path; `workingDirectory` is an existing absolute local directory. The request file also follows the local path policy. No UNC/device paths, PATH lookup, file association, or environment-variable expansion.
+- Arguments are individual strings, may be empty, and must never contain secret values or references. The launcher does not substitute `%NAME%`, `$env:NAME`, or `${NAME}`. Reject NUL; display argument control characters as visible escape sequences. Descriptions and paths must not contain misleading control or bidirectional formatting characters.
+- Names follow `[A-Za-z_][A-Za-z0-9_]*`; reject case-insensitive duplicates. All secrets are required.
+- Metadata may itself be sensitive. Do not automatically transfer values from chat or clipboard into JSON or include raw request files in error logs. The launcher cannot reliably detect a secret accidentally stored in metadata.
 
-Unterstützt werden kanonische absolute DOS-Pfade auf verfügbaren lokalen Fest-, Wechsel-, CD-ROM- und RAM-Laufwerken. Gewöhnliche Schrägstriche und Punktsegmente werden vor Dateizugriffen syntaktisch normalisiert; die Vorschau verwendet den kanonischen Snapshot. Vor Attribut- oder Inhaltszugriffen werden Laufwerkstyp und direkte DOS-Geräteabbildung geprüft. Netzlaufwerke, unbekannte Laufwerke und SUBST-Aliase werden abgewiesen. Jede kanonische Pfadkomponente einschließlich der Laufwerkswurzel wird einzeln geprüft; Reparse Points einschließlich Junctions, symbolischer Links, eingebundener Ordner und entsprechender Cloud-Platzhalter sind ausgeschlossen. Alternative Datenströme, Gerätenamen, Wildcards und mehrdeutige abschließende Punkte/Leerzeichen werden ebenfalls abgewiesen. Scheitert eine Abfrage, wird der Auftrag abgewiesen, auch bei einer Sandbox-Beschränkung.
+Canonical absolute DOS paths on available local fixed, removable, CD-ROM, and RAM drives are supported. Ordinary slashes and dot segments are syntactically normalized before file access; the preview uses the canonical snapshot. Drive type and direct DOS device mapping are checked before attribute/content access. Network drives, unknown drives, and SUBST aliases are rejected. Each canonical component, including the drive root, is checked individually; reparse points including junctions, symbolic links, mounted folders, and corresponding cloud placeholders are excluded. Alternate data streams, device names, wildcards, and ambiguous trailing dots/spaces are also rejected. A failed query rejects the request, including failure caused by a sandbox restriction.
 
-Die Datei wird einmal gelesen. Die Vorschau und der Start verwenden denselben unveränderlichen Auftrag. Programm und Arbeitsverzeichnis werden zu Beginn des Runners und unmittelbar vor `CreateProcessW` erneut mit derselben Pfadpolicy geprüft; kein erneutes stilles Einlesen geänderter Argumente. Ein neues Einlesen erfordert einen neuen Dialog. Die Prüfung bindet keine Dateiidentität und sperrt Pfadkomponenten nicht gegen Austausch. Zwischen Laufwerksprüfung, Komponentenprüfungen und Start bleiben Zeitfenster für konkurrierende Änderungen; dabei kann auch ein anderer oder entfernter Zielpfad erreichbar werden. Die Policy ist keine Isolation gegen berechtigte lokale Manipulation.
+The file is read once. Preview and launch use the same immutable request. The runner revalidates the program and working directory at entry and immediately before `CreateProcessW`, using the same path policy; modified arguments are not silently reread. Rereading requires a new dialog. Validation neither binds file identity nor locks components against replacement. Concurrent changes remain possible between drive checks, component checks, and launch, potentially making another or remote target path reachable. The policy does not isolate against authorized local manipulation.
 
-## 5. Dialog und Werte
+## 5. Dialog and values
 
-Das Fenster zeigt den absoluten Auftragspfad, den Programmpfad, jedes Argument einzeln mit Index und eindeutiger Zeichenketten-Darstellung, das Arbeitsverzeichnis und alle Secret-Namen mit Beschreibung. Die Argumentliste ist maßgeblich; eine zusätzlich angezeigte Aufrufzeile dient nur der Übersicht. Lange Angaben sind vollständig per Scrollen erreichbar und werden nicht nur mit Auslassungspunkten angezeigt. Pfad und Arbeitsverzeichnis bleiben während der Eingabe unverändert sichtbar.
+The window displays the absolute request path, program path, each argument separately with its index and unambiguous string representation, working directory, and all secret names/descriptions. The argument list is authoritative; an additional command-line preview is only an overview. Long content remains fully accessible through scrolling rather than only ellipses. Program path and working directory remain visible during input.
 
-Zusätzlich sichtbar: feste Umgebungspolitik, Ausgabeunterdrückung, Zeitlimits und Hinweis, dass Ziel und Nachkommen die Werte erhalten und der Launcher keine Programmisolation bietet. Aus einem Anzeigenamen wird keine vertrauenswürdige Identität abgeleitet.
+Also displayed: the fixed environment policy, output suppression, timeouts, and notice that the target and descendants receive the values and that the launcher provides no program isolation. A display name is not treated as a trusted identity.
 
-Pro Secret ein verdecktes Textfeld (`UseSystemPasswordChar`), Einfügeknopf und Strg+V über denselben Einfügepfad. Kein automatisches Lesen der Zwischenablage, kein Klartext-Schalter, keine Kopier-/Ausschneidefunktion. Einfügen ersetzt die markierte Auswahl genau einmal; ein belegtes Clipboard liefert eine feste lokale Meldung ohne seinen Inhalt. Keine stillschweigende Kürzung oder Normalisierung. NUL und Zeilenumbrüche ablehnen; sonstige Unicode-Zeichen und führende/abschließende Leerzeichen unverändert lassen. Leere Werte ablehnen; bis 16.384 UTF-16-Codeeinheiten je Wert, darüber feste Fehlermeldung ohne Wert. Das ist eine bewusste MVP-Grenze für einzeilige Secrets.
+Each secret has a masked text field (`UseSystemPasswordChar`), Paste button, and Ctrl+V using the same paste path. No automatic clipboard reading, plaintext toggle, or copy/cut operation. Pasting replaces the selected text exactly once; an unavailable clipboard produces a fixed local message without exposing content. No silent truncation or normalization. Reject NUL and line breaks; preserve other Unicode and leading/trailing spaces. Reject empty values; allow at most 16,384 UTF-16 code units per value, with a fixed error message containing no value for larger input. This is a deliberate MVP limit for single-line secrets.
 
-**Starten** ist erst bei gültigen Feldern möglich und erfordert eine ausdrückliche Aktivierung per Maus oder Tastatur auf dem Startknopf; Enter im Eingabefeld startet nicht. Escape, Abbrechen und Fensterschließen vor Start verwerfen den Auftrag. Doppelklick oder konkurrierende Ereignisse dürfen höchstens einen Prozess erzeugen.
+**Start** is available only when fields are valid and requires explicit mouse or keyboard activation of the button; Enter in an input field does not launch. Escape, Cancel, and closing the window before launch discard the request. Double-clicks or concurrent events must create at most one process.
 
-Nach Start werden Felder und temporäre Werteverweise so früh wie möglich geleert. Während der Laufzeit bleibt ein Statusfenster mit **Auftrag beenden** offen; Schließen beendet ebenfalls den Auftrag. Keine Wiederverwendung bei Neustart oder Fehler. Die Zwischenablage wird weder gespeichert noch automatisch gelöscht: Löschen würde die Historie ohnehin nicht zuverlässig entfernen und könnte neueren Nutzerinhalt überschreiben. Clipboard-Historie, Synchronisation und Passwortmanager-Verhalten bleiben außerhalb des Werkzeugs.
+After launch, clear fields and temporary value references as early as possible. A status window remains open with **Stop task**; closing it also stops the task. No value reuse after restart or failure. The clipboard is neither stored nor automatically cleared: clearing cannot reliably remove history and could overwrite newer user content. Clipboard history, synchronization, and password-manager behavior remain outside the tool's control.
 
-`ApprovalLifecycle` besitzt den Runner-Task und dessen Abbruchquelle unabhängig von der WinForms-Ereignisschleife. Beim Freigeben des Formulars wird zuerst abgebrochen und die Runner-Bereinigung abgewartet; dabei wird nicht auf eine UI-Fortsetzung gewartet. Auch nach einer Ausnahme aus `Application.Run` erfolgt eine feste Fehleranzeige erst nach diesem Schritt. `CLEANUP_FAILED` behält Vorrang vor einem UI-Fehler; eine fehlschlagende Fehleranzeige überschreibt dieses Ergebnis nicht. Späte UI-Fortsetzungen bedienen keine bereits freigegebenen Controls.
+`ApprovalLifecycle` owns the runner task and cancellation source independently of the WinForms event loop. Disposing the form first cancels and awaits runner cleanup without waiting for a UI continuation. Even after an `Application.Run` exception, a fixed error report appears only after that step. `CLEANUP_FAILED` takes precedence over a UI error; a failed error dialog cannot overwrite it. Late UI continuations do not access disposed controls.
 
-## 6. Umgebung, Argumente und Prozesserzeugung
+## 6. Environment, arguments, and process creation
 
-Der Ziel-Umgebungsblock wird neu aufgebaut, **nicht aus dem Elternprozess kopiert**. Feste minimale Basis: `SystemRoot` und `WINDIR` aus dem Windows-Verzeichnis per Betriebssystem-API; `PATH` ausschließlich aus dessen `System32`- und Windows-Ordner. Dazu kommen nur die bestätigten Secret-Namen und Werte. Keine geerbten Provider-Tokens, Suchpfade oder Laufzeitoptionen, keine automatische Fallback-Vererbung. Programme, die weitere Variablen brauchen, können mit diesem MVP inkompatibel sein; eine spätere Erweiterung braucht eine eigene geprüfte Policy. Das verändert keine Benutzer-/Systemvariablen. Bereits im aufrufenden Prozess vorhandene Secrets werden dadurch nicht rückwirkend entfernt.
+The target environment block is constructed anew, **not copied from the parent process**. Fixed minimal base: `SystemRoot` and `WINDIR` from the Windows directory through an OS API; `PATH` contains only that directory's System32 and Windows directories. Only confirmed secret names/values are added. No inherited provider tokens, search paths, or runtime options, and no inheritance fallback. Programs requiring additional variables may be incompatible with this MVP; a future extension needs its own reviewed policy. User/system variables are not changed. Secrets already present in the caller are not retroactively removed.
 
-Secret-Namen werden zusätzlich ohne Beachtung der Groß-/Kleinschreibung gegen eine versionierte Sperrliste geprüft. Ausgangsliste: `PATH`, `PATHEXT`, `SystemRoot`, `WINDIR`, `COMSPEC`, `TEMP`, `TMP`, `HOME`, `USERPROFILE`, `APPDATA`, `LOCALAPPDATA`, `PSModulePath`, `ENV`, `BASH_ENV`, `JAVA_TOOL_OPTIONS`, `_JAVA_OPTIONS`, `JDK_JAVA_OPTIONS`; außerdem Präfixe `SHANDOFF_`, `DOTNET_`, `CORECLR_`, `COMPlus_`, `COR_`, `NODE_`, `PYTHON`, `RUBY`, `PERL`, `LD_`, `DYLD_`, `ELECTRON_`, `GIT_`, `SSH_` und `PROGRAM`. Damit sollen offensichtliche Suchpfad-/Laufzeitsteuerungen nicht als Secrets eingeschleust werden. Die Sperrliste ist keine vollständige Erkennung aller programmspezifischen Steuervariablen und kein Schutz vor genehmigtem schädlichem Zielcode.
+Secret names are also checked case-insensitively against a versioned denylist. Initial list: `PATH`, `PATHEXT`, `SystemRoot`, `WINDIR`, `COMSPEC`, `TEMP`, `TMP`, `HOME`, `USERPROFILE`, `APPDATA`, `LOCALAPPDATA`, `PSModulePath`, `ENV`, `BASH_ENV`, `JAVA_TOOL_OPTIONS`, `_JAVA_OPTIONS`, `JDK_JAVA_OPTIONS`; plus prefixes `SHANDOFF_`, `DOTNET_`, `CORECLR_`, `COMPlus_`, `COR_`, `NODE_`, `PYTHON`, `RUBY`, `PERL`, `LD_`, `DYLD_`, `ELECTRON_`, `GIT_`, `SSH_`, and `PROGRAM`. This blocks obvious search-path/runtime controls disguised as secrets. It does not identify every program-specific control variable or protect against approved malicious target code.
 
-Programm und Argumentliste bleiben im Modell getrennt. Der Adapter verwendet `CreateProcessW` mit explizitem `lpApplicationName`, eigenem Unicode-Umgebungsblock und Arbeitsverzeichnis. Windows benötigt dabei technisch eine Aufrufzeichenkette; sie wird an genau einer Stelle aus der Liste mit getesteter Windows-/CRT-Quotierung erzeugt. Keine Shell-Zeichenketten zusammensetzen. Leere Argumente, Leerzeichen, Anführungszeichen und Backslashes müssen den Roundtrip in .NET-/CRT-Prüfprozessen bestehen. Programme mit eigener abweichender Argumentauswertung benötigen einen gesonderten Kompatibilitätsnachweis. Grundlagen: [CreateProcessW](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessw) und [CRT-Argumentregeln](https://learn.microsoft.com/en-us/cpp/c-language/parsing-c-command-line-arguments?view=msvc-170).
+Program and argument list remain separate in the model. The adapter uses `CreateProcessW` with explicit `lpApplicationName`, its own Unicode environment block, and a working directory. Windows technically requires a command-line string; it is built in exactly one place from the list using tested Windows/CRT quoting. Do not concatenate shell commands. Empty arguments, spaces, quotes, and backslashes must survive the round trip in .NET/CRT probes. Programs with different custom argument parsers need separate compatibility evidence. References: [CreateProcessW](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessw) and [CRT argument parsing](https://learn.microsoft.com/en-us/cpp/c-language/parsing-c-command-line-arguments?view=msvc-170).
 
-Keine automatisch vorgeschalteten `cmd.exe /c`, `powershell -Command` oder vergleichbaren Interpreter. `.cmd`, `.bat` und `.ps1` werden nicht direkt gestartet. Ein ausdrücklich konfigurierter Interpreter, etwa `pwsh.exe` mit `-File` und einem Skriptpfad oder `node.exe` mit einem Skriptpfad, ist ein genehmigter Zielaufruf; er wird mit allen Argumenten angezeigt. Dessen eigene Auswertung und das Skript gehören zur Vertrauensentscheidung. Keine Sicherheitsgarantie aufgrund einer Endung oder eines Pfads.
+No implicit `cmd.exe /c`, `powershell -Command`, or similar interpreter. `.cmd`, `.bat`, and `.ps1` are not launched directly. An explicitly configured interpreter, such as `pwsh.exe` with `-File` and a script path or `node.exe` with a script path, is an approved target invocation displayed with all arguments. Its own evaluation and script are part of the trust decision. An extension or path provides no security guarantee.
 
-Der Runner erstellt ein unbenanntes Job Object mit `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, ohne Breakaway-Freigaben. Die Zuordnung erfolgt während `CreateProcessW` mittels `STARTUPINFOEX` / `PROC_THREAD_ATTRIBUTE_JOB_LIST`; keine nachträgliche Zuordnung mit ungeschütztem Zeitfenster. Der Job-Handle bleibt nicht vererbbar und wird nicht an Ziel oder Aufrufer weitergegeben. Nur explizite Standard-I/O-Handles werden über eine Handle-Liste vererbt. Scheitern Job-Konfiguration, Attributliste oder Start, gibt es keinen unbetreuten Ersatzstart. Diese Planung nutzt die dokumentierten [Prozesserzeugungsattribute](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute).
+The runner creates an unnamed Job Object with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, without breakaway permissions. Assignment happens during `CreateProcessW` through `STARTUPINFOEX` / `PROC_THREAD_ATTRIBUTE_JOB_LIST`; there is no later assignment with an unprotected window. The job handle remains non-inheritable and is passed to neither target nor caller. Only explicit standard I/O handles are inherited through a handle list. Failed job configuration, attribute-list setup, or launch has no unmanaged fallback. Reference: [process creation attributes](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute).
 
-## 7. Ablauf, Abbruch und Status
+## 7. Lifecycle, cancellation, and status
 
-Zustände: `Validating → AwaitingApproval → Starting → Running → CleaningUp → Terminal`. Jeder Pfad nach einer Eingabe führt über Bereinigung. Vor `Starting` ist kein Zielprozess erlaubt. Ein Abbruch während `Starting` wird verriegelt und beendet einen gerade erzeugten Job, bevor der Auftrag als abgeschlossen gilt. Windows darf bereits genehmigten Zielcode unmittelbar nach Prozesserzeugung ausführen; ein zeitgleicher Abbruch kann ausgeführte Seiteneffekte nicht zurücknehmen.
+States: `Validating → AwaitingApproval → Starting → Running → CleaningUp → Terminal`. Every path after value entry passes through cleanup. No target process is allowed before `Starting`. Cancellation during `Starting` is latched and terminates a newly created job before the task is considered complete. Windows may execute approved target code immediately after process creation; simultaneous cancellation cannot undo completed side effects.
 
-- Pro Windows-Benutzer und interaktiver Sitzung ein Auftrag, umgesetzt mit einem sitzungsgebundenen, benutzerbezogenen Mutex. Weitere Anfragen erhalten sofort `BUSY`, ohne Eingabefenster, Queue oder Wertübernahme. Der Mutex ist keine Identitäts-/Sicherheitsgrenze gegen denselben Benutzer.
-- Freigabezeitlimit: 5 Minuten ab Dialoganzeige. Laufzeitlimit: 15 Minuten ab erfolgreicher Prozesserzeugung. Feste MVP-Werte; ein anderer Bedarf ist eine spätere Vertragsänderung. Kein verstecktes unbegrenztes Warten.
-- Abbruch, Fensterschließen und Laufzeitlimit beenden den gesamten betreuten Job. Es gibt keinen „im Hintergrund weiterlaufen“-Pfad. Bei normalem Ende des direkten Zielprozesses werden verbleibende Job-Nachkommen ebenfalls beendet; dieses Verhalten wird vor Start angezeigt.
-- Nach einem Beendigungsereignis wird der Job terminiert, sein Prozessbestand bis null geprüft und alle Handles werden geschlossen. Bereinigungsbudget: 5 Sekunden. Bei ausbleibender Bestätigung `CLEANUP_FAILED`, keine Erfolgsmeldung; letzter Job-Handle wird trotzdem geschlossen. Unter normal funktionierendem Windows sollen innerhalb dieses Budgets keine betreuten Prozesse verbleiben.
-- Bei Launcher-Absturz soll das Schließen seines letzten Job-Handles durch Windows die betreuten Prozesse beenden. Ein bereits bei Start bestehender übergeordneter Job, etwa des Desktop-Aufrufers, muss im Integrationstest berücksichtigt werden. Unvereinbare Einschränkungen führen zum Startfehler.
-- Bei gebundenem Aufruferende greift derselbe Abbruch-/Bereinigungspfad auch ohne `finally` des Aufrufskripts. Eine noch offene Ergebnisanzeige schließt automatisch; ein bereits ermitteltes Ergebnis, insbesondere `CLEANUP_FAILED`, bleibt dabei erhalten.
-- Solange kein gebundener Aufrufer endet, bleibt die feste Ergebnisanzeige lokal bis Bestätigung sichtbar; keine Eingabefelder oder Werte bleiben erhalten. Nach Abschluss des Jobs kann der bereits bereinigte Prozess seinen Mutex freigeben. Aufrufer warten bis zum Schließen dieser Ergebnisanzeige auf den Exitcode; UI-Wartezeit ist keine Zielprozess-Laufzeit.
+- One request per Windows user and interactive session, enforced by a session-local user-specific mutex. Further requests immediately receive `BUSY`, without an input window, queue, or value reuse. The mutex is not an identity/security boundary against the same user.
+- Approval timeout: 5 minutes after showing the dialog. Execution timeout: 15 minutes after successful process creation. Fixed MVP limits; other requirements need a later contract change. No hidden unbounded waiting.
+- Cancellation, closing the window, and execution timeout terminate the entire managed job. There is no continue-in-background path. Normal termination of the direct target also terminates remaining job descendants; this is disclosed before launch.
+- After a termination event, terminate the job, verify that its process count reaches zero, and close all handles. Cleanup budget: 5 seconds. Without confirmation, return `CLEANUP_FAILED`, never success; close the final job handle anyway. Under normally functioning Windows, no managed processes should remain within that budget.
+- On launcher crash, Windows closing its last job handle should terminate managed processes. An enclosing job already present at startup, such as one from the desktop caller, must be considered in integration tests. Incompatible restrictions cause startup failure.
+- A bound caller's termination triggers the same cancellation/cleanup path even without the wrapper's `finally`. An open result display closes automatically; an already determined result, especially `CLEANUP_FAILED`, is preserved.
+- While no bound caller terminates, the fixed result display remains visible locally until dismissed; no fields or values remain. After job completion, the cleaned-up process may release its mutex. Callers wait for dismissal before receiving the exit code; UI waiting is not target execution time.
 
-Windows Job Objects betreuen übliche per Prozesserzeugung gestartete Nachkommen. Sie sind keine Sandbox: Übergaben an bestehende Prozesse, Dienste oder alternative Aktivierungswege werden nicht umfassend erfasst. Solche Aufträge sind nicht unterstützt und dürfen nicht als „keine verwaisten Prozesse unter allen Umständen“ beworben werden. Grundlage: [Microsoft: Job Objects](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects).
+Windows Job Objects manage ordinary descendants created through process creation. They are not a sandbox: handoff to existing processes, services, or alternative activation paths is not comprehensively covered. Such requests are unsupported and must not be advertised as preventing orphaned processes under every circumstance. Reference: [Microsoft: Job Objects](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects).
 
-| Exitcode | Feste Kategorie | Bedeutung |
+| Exit code | Fixed category | Meaning |
 | --- | --- | --- |
-| 0 | `COMPLETED` | Direkter Zielprozess mit Code 0 beendet; Job-Bereinigung bestätigt |
-| 2 | `CANCELLED` | Nutzerabbruch oder erkanntes Aufruferende; falls gestartet, Bereinigung bestätigt |
-| 3 | `TIMED_OUT` | Freigabe- oder Laufzeitlimit erreicht; falls gestartet, Bereinigung bestätigt |
-| 4 | `BUSY` | Ein anderer Auftrag ist aktiv |
-| 5 | `INVALID_REQUEST` | Vertrag, Pfad oder Umgebungsname ungültig; kein Zielstart |
-| 6 | `START_FAILED` | Zielstart/Job-Einrichtung fehlgeschlagen; kein weiterlaufender betreuter Prozess |
-| 7 | `TARGET_FAILED` | Zielprozess mit anderem Code beendet; Bereinigung bestätigt |
-| 8 | `INTERNAL_ERROR` | Interner Fehler; falls gestartet, Bereinigung bestätigt |
-| 9 | `CLEANUP_FAILED` | Beendigung nicht vollständig bestätigt; hat Vorrang vor allen anderen Kategorien |
+| 0 | `COMPLETED` | Direct target exited 0 and job cleanup confirmed; also successful standalone `--help` |
+| 2 | `CANCELLED` | User cancellation or detected caller termination; cleanup confirmed if started |
+| 3 | `TIMED_OUT` | Approval/execution limit reached; cleanup confirmed if started |
+| 4 | `BUSY` | Another request is active |
+| 5 | `INVALID_REQUEST` | Invalid CLI, contract, path, or environment name; no target launch |
+| 6 | `START_FAILED` | Target launch/job setup or caller monitoring failed; no managed process remains running |
+| 7 | `TARGET_FAILED` | Target exited nonzero; cleanup confirmed |
+| 8 | `INTERNAL_ERROR` | Internal failure; cleanup confirmed if started |
+| 9 | `CLEANUP_FAILED` | Termination not fully confirmed; takes precedence over every other category |
 
-Der numerische Ziel-Exitcode darf lokal angezeigt werden, wird aber nicht als Launcher-Exitcode durchgereicht. Fehlende Eingaben halten den Dialog offen und erzeugen keinen Prozess. Sie sind kein terminaler Fehlerstatus. Fehlertexte bestehen aus eigenen festen Meldungen und gegebenenfalls numerischem Windows-Fehlercode; keine rohen Exceptions oder Zielmeldungen.
+The numeric target exit code may be displayed locally but is not passed through as the launcher exit code. Missing input keeps the dialog open without creating a process; it is not a terminal error. Error text uses fixed application messages and, where applicable, numeric Windows error codes; no raw exceptions or target messages.
 
-## 8. Ausgaben und Sicherheitsgrenzen
+## 8. Output and security boundaries
 
-Ziel-stdin liest aus `NUL`; stdout und stderr schreiben nach `NUL`. Keine Pipes, Ausgabe-Puffer, Konsolenvererbung, Rohdaten-Vorschau oder Ausgabe-Dateien des Launchers. Somit können auch sehr große oder binäre Ausgaben keinen unbegrenzt wachsenden Erfassungspuffer erzeugen. Der Launcher selbst schreibt keine Standardausgabe/-fehler und keine persistenten Logs; Codex erhält höchstens einen vom Aufrufer aus dem Exitcode abgeleiteten festen Status. Auch im Fehlerfall keine ungeprüften Zieltexte. Für Diagnosen dienen ausschließlich synthetische Prüfprogramme und strukturierte Testresultate.
+Target stdin reads from `NUL`; stdout/stderr write to `NUL`. No target pipes, output buffers, console inheritance, raw preview, or launcher-created target output files. Even large or binary output cannot create an unbounded capture buffer. The launcher writes only fixed CLI help to stdout and its own fixed configuration/error diagnostics to stderr; normal requests remain silent. No persistent logs or unvalidated target text. Diagnostics use only synthetic probes and structured test results.
 
-Diese Unterdrückung begrenzt nur diese Standardkanäle. Das genehmigte Ziel kann eigene Fenster, Dateien, Netzwerkverbindungen, Telemetrie, bestehende Prozesse oder andere Ausgabekanäle verwenden. Es kann Secrets transformieren, weitergeben oder dauerhaft speichern. Ein späterer Ausgabefilter wäre keine vollständige Sicherheitsgarantie. Das Tool ist kein Netzwerkfilter und erteilt dem Ziel keine gegenüber dem Benutzer eingeschränkten Betriebssystemrechte.
+This suppression covers only those standard channels. An approved target may use its own windows, files, network connections, telemetry, existing processes, or other output channels. It can transform, forward, or persist secrets. A future output filter would not provide complete security. The tool is not a network filter and does not give the target OS permissions more restricted than the user's.
 
-Weitere Grenzen:
+Further limitations:
 
-- Ziel und normale Nachkommen können die Umgebungswerte lesen und vererben. Das Leeren von UI-Feldern oder Launcher-Verweisen entfernt keine bereits im Ziel kopierten Werte.
-- Ausreichend berechtigte Schadsoftware desselben Windows-Benutzers, Debugger, Speicherabbilder und Systemadministratoren sind außerhalb des Schutzversprechens. Prozessumgebung ist kein geschützter Tresor.
-- UI, .NET-Strings, Clipboard und native Umgebungsblöcke können Kopien enthalten. Veränderbare eigene Puffer werden nach Gebrauch bestmöglich überschrieben und Handles zuverlässig freigegeben; sofortige vollständige Speicherlöschung wird nicht garantiert. Keine eigenen Dumps oder Crash-Uploads; Betriebssystem-/Fremd-Dumps können nicht ausgeschlossen werden.
-- Keine Secret-Dateien, Registry-Werte, Credential-Manager-/DPAPI-Ablage oder globalen Umgebungsänderungen durch den Launcher. Paging, Ruhezustand, Clipboard-Verlauf und Zielprogramm-Ablage kann er nicht ausschließen.
-- Ein angezeigter App-Name oder Pfad ist keine Account-/Vault-Berechtigung und kein Beweis unveränderten Codes. Skripte, Module, Arbeitsverzeichnis, Dateiaustausch zwischen Prüfung und Start und lokale Manipulation bleiben relevant. Es gibt keinen automatischen Vertrauensspeicher.
-- Prozessende beendet die lokale Bereitstellung, widerruft aber kein Token und macht bereits erfolgte externe Aktionen nicht rückgängig.
+- The target and ordinary descendants can read and inherit environment values. Clearing UI fields or launcher references does not remove values already copied by the target.
+- Sufficiently privileged malware running as the same Windows user, debuggers, memory dumps, and administrators are outside the protection claim. Process environment is not a protected vault.
+- UI controls, .NET strings, clipboard, and native environment blocks may contain copies. Owned mutable buffers are overwritten on a best-effort basis after use and handles are reliably released; immediate complete memory erasure is not guaranteed. No application-created dumps or crash uploads; OS/third-party dumps cannot be ruled out.
+- The launcher creates no secret files, registry values, Credential Manager/DPAPI store, or global environment changes. It cannot exclude paging, hibernation, clipboard history, or target-created storage. The separately optional installer PATH integration is described in RELEASING.md and never contains secrets.
+- A displayed application name/path is neither account/vault authorization nor proof of unchanged code. Scripts, modules, working directories, file replacement between validation and launch, and local manipulation remain relevant. There is no automatic trust store.
+- Process termination ends local provisioning but revokes no token and undoes no external actions already performed.
 
-## 9. Prüffähige MVP-Abnahmekriterien
+## 9. Verifiable MVP acceptance criteria
 
-Alle Tests verwenden synthetische Werte und lokale Prüfprogramme ohne echte Konten oder Netzwerkzugriffe. Keine Secret-Werte in Testberichten, Snapshots, Screenshots oder Logs. Ein lokaler Prüfprozess meldet nur feste Prüfcodes; der separate Ausgabeverwerfungstest schreibt absichtlich synthetische Werte in die verworfenen Standardkanäle. Die produktive I/O-Policy wird dabei unverändert verwendet. Automatisierte GUI-Prüfungen aus Codex-Werkzeugprozessen sind durchgeführt; eine manuelle Bedienprüfung und der tatsächliche Desktop-Abbruchknopf sind noch offen. Nachweise: [TESTING.md](TESTING.md).
+All tests use synthetic values and local probes without real accounts or network access. No secret values in test reports, snapshots, screenshots, or logs. A local probe reports fixed result codes only; the separate output-discard test intentionally writes synthetic values into discarded standard channels. Production I/O policy is used unchanged. Automated GUI checks from Codex tool processes have run; manual interaction checks and the actual desktop cancel button remain outstanding. Evidence: [TESTING.md](TESTING.md).
 
-| ID | Prüfung | Erforderliches Ergebnis |
+| ID | Check | Required result |
 | --- | --- | --- |
-| A01 | Start aus Codex Desktop ohne vorbereitetes Terminal; langer Zielpfad und mehrere Secrets | Vollständige, lesbare Vorschau; kein Zielstart vor Freigabe; alle Argumente erreichbar |
-| A02 | Synthetische Werte inkl. Unicode, Leerzeichen am Rand und Sonderzeichen übergeben | Exakte Übereinstimmung im Ziel, keine Werte in argv oder Auftragsdatei; keine Änderung der Aufrufer-/Benutzer-/Systemumgebung |
-| A03 | Abbrechen, Escape und Fensterschließen vor Start sowie 5-Minuten-Freigabezeitlimit | Kein Prüfprozess erzeugt, kein Startmarker; Eingaben verworfen, Kategorie 2 bzw. 3 |
-| A04 | Ein oder mehrere Felder leer; NUL, Zeilenumbruch oder überlanger Wert | Verständliche feste lokale Meldung, keine Kürzung, kein Zielstart; gültige Eingabe ermöglicht späteren Start |
-| A05 | Einfügeknopf und Strg+V mit Auswahl, leerer und vorübergehend gesperrter Zwischenablage | Exakt einmaliges Einfügen, stets verdeckt; kein automatisches Clipboard-Lesen; nach Sperre erneuter Versuch möglich |
-| A06 | Argumente: leer, Leerzeichen, `"`, Backslash vor `"`/am Ende, Unicode und `& \| > % $ ;` | Identischer argv-Roundtrip; keine unerwartete Shell-Aktion, Expansion oder Zusatzprozesse |
-| A07 | Ungültiges JSON, doppelte Schlüssel, unbekannte Felder, relative/fehlende Pfade, direkte Skriptdatei | Kategorie 5 vor Werteingabe, kein Zielstart; keine rohen JSON-/Exception-Inhalte im Agent-Kontext |
-| A08 | Case-Duplikate, `Path`, `NODE_OPTIONS` und andere Sperrnamen; synthetische Credentials im Elternprozess | Ungültige Namen abgewiesen; Ziel erhält exakt die festgelegte Basis und genehmigte Namen, keine geerbten Credential-/Steuervariablen |
-| A09 | Fehlendes/ungültiges EXE, verweigerter Start oder scheiternde Job-Zuordnung | Feste Kategorie 5 oder 6 nach Fehlerphase, keine Rohfehler, kein unbetreuter Ersatzstart |
-| A10 | Ziel schreibt synthetische Secrets auf stdout/stderr, binär und in großer Menge | Beide Kanäle verworfen; keine Werte im Agent-Kontext oder Launcher-Dateien; kein Ausgabepufferwachstum/Deadlock |
-| A11 | Ziel endet mit 0 bzw. Nichtnull, mit/ohne weiterlaufende Nachkommen | Kategorie 0 bzw. 7, Zielcode lokal korrekt; Job danach leer, alle Handles freigegeben |
-| A12 | Abbruch während Start und Laufzeit; Laufzeitlimit; Launcher während Start/Lauf töten; aufrufenden Agent-Auftrag in Codex Desktop abbrechen | Unter normal funktionierendem Windows kein betreuter Prozess nach spätestens 5 Sekunden; Status erst nach Bereinigung; Absturz und Aufruferabbruch beenden Job ebenfalls |
-| A13 | Zwei parallele Anfragen, schneller Doppelklick auf Start, wiederholte Aufträge | Zweite Anfrage erhält 4 ohne Dialog; höchstens ein Start je Freigabe; keine Wiederverwendung von Werten, kein wachsender Handle-Bestand |
-| A14 | Auftrag nach Vorschau ändern; Ziel im übergeordneten Desktop-Job starten | Metadaten bleiben identisch zum genehmigten Snapshot; kompatible Job-Verschachtelung funktioniert, sonst Kategorie 6 |
-| A15 | Bereinigungsfehler synthetisch injizieren | Kategorie 9 überschreibt Erfolg/Abbruch; kein falsches „beendet“; letzter Job-Handle wird geschlossen |
-| A16 | Sämtliche Erfolgs-/Fehlerpfade auf Dateischreibzugriffe und Diagnosekanäle prüfen | Keine vom Launcher persistierten Secrets, Rohlogs oder Telemetrie; keine Secret-Werte in Testartefakten |
+| A01 | Launch from Codex Desktop without a prepared terminal; long target path and multiple secrets | Complete readable preview; no target before approval; every argument accessible |
+| A02 | Pass synthetic values including Unicode, leading/trailing spaces, and special characters | Exact target match, no values in argv/request file; no caller/user/system environment changes |
+| A03 | Cancel, Escape, window close before launch, and 5-minute approval timeout | No probe/start marker; input discarded; category 2 or 3 |
+| A04 | Empty fields; NUL, line break, or oversized value | Understandable fixed local message, no truncation or launch; valid input permits later launch |
+| A05 | Paste button and Ctrl+V with selection, empty clipboard, and temporarily locked clipboard | Exactly one masked insertion; no automatic clipboard reading; retry possible after lock |
+| A06 | Arguments: empty, spaces, `"`, backslash before `"`/at end, Unicode, and `& \| > % $ ;` | Identical argv round trip; no unexpected shell action, expansion, or extra processes |
+| A07 | Invalid JSON, duplicate keys, unknown fields, relative/missing paths, direct script file | Category 5 before value entry; no target; no raw JSON/exception contents in agent context |
+| A08 | Case duplicates, `Path`, `NODE_OPTIONS`, other denied names; synthetic credentials in parent | Invalid names rejected; target receives exactly the fixed base and approved names, no inherited credentials/controls |
+| A09 | Missing/invalid EXE, denied launch, failed job assignment | Fixed category 5 or 6 by failure phase; no raw errors or unmanaged fallback |
+| A10 | Target writes synthetic secrets to stdout/stderr, including binary and large output | Both channels discarded; no values in agent context/launcher files; no buffer growth/deadlock |
+| A11 | Target exits 0/nonzero, with/without remaining descendants | Category 0/7; correct local target code; job empty afterward, handles released |
+| A12 | Cancel during startup/runtime; timeout; kill launcher during startup/runtime; cancel caller task in Codex Desktop | Under normally functioning Windows, no managed process after at most 5 seconds; status only after cleanup; crash/caller cancellation also terminate job |
+| A13 | Concurrent requests, rapid double-click on Start, repeated tasks | Second request gets 4 without dialog; at most one launch per approval; no value reuse or growing handle count |
+| A14 | Modify request after preview; launch under enclosing desktop job | Metadata remains the approved snapshot; compatible nesting works, otherwise category 6 |
+| A15 | Synthetically inject cleanup failure | Category 9 overrides success/cancellation; no false completion; final job handle closed |
+| A16 | Check all success/failure paths for file writes and diagnostic channels | No launcher-persisted secrets, raw logs, or telemetry; no secret values in test artifacts |
 
-Für A03/A11/A12 darf das synthetische Prüfprogramm einen wertfreien Startmarker in einem Testverzeichnis und bekannte lokale Synchronisationsereignisse verwenden. Nachkommen/PIDs werden kontrolliert nachverfolgt; es werden keine fremden Prozesse beendet. Zeitlimits erhalten eine intern injizierbare monotone Uhr für schnelle Tests; mindestens ein manueller Test prüft die echten Fristen. A16 ist ein begrenzter Nachweis für die getesteten Pfade, keine Garantie über beliebigen Zielcode oder das Betriebssystem.
+For A03/A11/A12, the synthetic probe may write a value-free start marker in a test directory and use known local synchronization events. Descendants/PIDs are tracked under controlled ownership; unrelated processes are never terminated. Timeouts have an internally injectable monotonic clock for fast tests; at least one manual test must cover real durations. A16 is limited evidence for tested paths, not a guarantee about arbitrary target code or the OS.
 
-## 10. Erster Implementierungsschritt
+## 10. First implementation step
 
-**Eine synthetische vertikale Scheibe, noch keine Freigabe für reale Secrets.** Dieser Schritt ist als erster Prototyp umgesetzt; die folgenden Punkte beschreiben seinen Umfang. Dafür wird das vorhandene .NET-10-SDK über `C:\Users\<Benutzer>\.dotnet\dotnet.exe` verwendet; kein globaler Installationsschritt nötig.
+**A synthetic vertical slice, not approval for real secrets.** This step is implemented as the first prototype; the following describes its scope. It used the existing .NET 10 SDK without a global installation step.
 
-1. Kleine Projektstruktur mit WinForms-EXE, UI-unabhängigen Vertrags-/Ablaufklassen, isoliertem Win32-Runner und lokalem synthetischem Prüfprogramm anlegen. Keine Provider-Abhängigkeit und kein privater Referenzcode nötig.
-2. Genau den obigen Auftragsvertrag, feste Umgebungspolicy, vollständige Vorschau und verdeckte Eingabe mit beiden Einfügewegen implementieren. Nur synthetischen Probeauftrag als mitgeliefertes Beispiel verwenden.
-3. Direkten Start mit Job-Zuordnung bei Erzeugung, `NUL`-Handles und Einmal-Freigabe implementieren. Abbrechen vor/während Start, Beenden während Laufzeit und normales Zielende müssen bereits bereinigen; kein vorläufiger unbetreuter Launcher.
-4. Zuerst A02, A03, A05, A06, A08, A10 und A11 sowie den Start-/Absturz-/Aufruferabbruchpfad aus A12 mit synthetischem Kind und Enkel prüfen. Aus Codex Desktop die lokale Dialogbedienung und den Aufrufervertrag manuell nachweisen. Fehlende MVP-Prüfungen offen ausweisen.
+1. Create a small solution with a WinForms EXE, UI-independent contract/lifecycle classes, isolated Win32 runner, and local synthetic probe. No provider dependency or private reference code is needed.
+2. Implement exactly the request contract, fixed environment policy, complete preview, and masked input with both paste paths. Ship only a synthetic probe request as the generated example.
+3. Implement direct launch with job assignment at creation, `NUL` handles, and one-time approval. Cancellation before/during launch, termination during execution, and normal target exit must already clean up; no provisional unmanaged launcher.
+4. First verify A02, A03, A05, A06, A08, A10, A11, and startup/crash/caller cancellation from A12 with a synthetic child/grandchild. Manually verify local dialog interaction and the caller contract from Codex Desktop. Explicitly list remaining MVP checks.
 
-Review-Ergebnis dieser Scheibe: Quellcode, wertfreier generierter Beispielauftrag unter `artifacts/demo`, reproduzierbare lokale Testbefehle und [Prüfbericht](TESTING.md) mit tatsächlich ausgeführten Tests und offenen Kriterien. Erst die vollständige Umsetzung und Prüfung von A01–A16 erlaubt die Bezeichnung „MVP erfüllt“; auch dann gelten die dokumentierten Sicherheitsgrenzen.
+Review deliverables: source code, a generated value-free example request under `artifacts/demo`, reproducible local test commands, and [test evidence](TESTING.md) distinguishing executed checks from outstanding criteria. Only complete implementation and verification of A01–A16 permits claiming the MVP is satisfied; documented security limitations still apply.

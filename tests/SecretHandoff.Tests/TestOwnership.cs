@@ -56,7 +56,7 @@ internal static partial class Program
         catch (ArgumentException) { return false; }
     }
 
-    private static bool IsOwnedWrapperGui(Process candidate, Process wrapper)
+    private static bool IsOwnedWrapperGui(Process candidate, Process wrapper, string? expectedPath = null)
     {
         try
         {
@@ -71,7 +71,7 @@ internal static partial class Program
             var path = new StringBuilder(32768);
             uint length = (uint)path.Capacity;
             if (!OwnershipQueryFullProcessImageName(childHandle, 0, path, ref length) ||
-                !string.Equals(path.ToString(), DemoExecutable, StringComparison.OrdinalIgnoreCase)) return false;
+                !string.Equals(path.ToString(), expectedPath ?? DemoExecutable, StringComparison.OrdinalIgnoreCase)) return false;
             return IsLiveTestProcess(wrapper) && IsLiveTestProcess(candidate);
         }
         catch (Win32Exception) { return false; }
@@ -100,19 +100,39 @@ internal static partial class Program
     private static List<IntPtr> WaitOwnedGuiControls(Process process)
     {
         var watch = Stopwatch.StartNew();
+        string previousLayout = "";
+        int stableSamples = 0;
         while (IsLiveTestProcess(process) && watch.ElapsedMilliseconds < 5000)
         {
             process.Refresh();
             if (process.MainWindowHandle != IntPtr.Zero)
             {
-                Assert(process.WaitForInputIdle(5000), "GUI_NOT_IDLE");
+                // Readiness is established by owned WinForms controls, also for console EXEs.
                 AssertWindowOwned(process, process.MainWindowHandle);
-                return Children(process.MainWindowHandle);
+                var controls = Children(process.MainWindowHandle);
+                var edits = controls.Where(h => ClassName(h).StartsWith("WindowsForms10.Edit", StringComparison.OrdinalIgnoreCase) &&
+                    (GetWindowLongW(h, -16) & 0x4) == 0).ToArray();
+                string layout = string.Join(",", edits.Select(h =>
+                {
+                    GetWindowRect(h, out var rect);
+                    return rect.Top + ":" + rect.Bottom + ":" + rect.Left;
+                }).Order());
+                if (edits.Length == 2 && controls.Any(h => Caption(h) == "Start") &&
+                    edits.All(OwnershipIsWindowVisible) && layout == previousLayout)
+                {
+                    if (++stableSamples >= 3) return controls;
+                }
+                else stableSamples = 0;
+                previousLayout = layout;
             }
             Thread.Sleep(20);
         }
         throw new TestFailure("OWNED_GUI_NOT_SHOWN");
     }
+
+    [DllImport("user32.dll", EntryPoint = "IsWindowVisible")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool OwnershipIsWindowVisible(IntPtr window);
 
     private static Process StartOwnershipWrapper(string request)
     {
@@ -145,7 +165,7 @@ internal static partial class Program
         Assert(inputs.Length == 2, "OWNERSHIP_INPUT_COUNT");
         foreach (var input in inputs)
             Assert(SendOwnedGuiMessage(first, input, 0xE, "").ToUInt64() == 0, "OTHER_OWNED_GUI_FILLED"); // WM_GETTEXTLENGTH only
-        var start = controls.Single(h => Caption(h) == "Starten");
+        var start = controls.Single(h => Caption(h) == "Start");
         AssertWindowOwned(first, start);
         Assert(!OwnershipIsWindowEnabled(start), "OTHER_OWNED_GUI_START_ENABLED");
         Assert(!File.Exists(marker) && !File.Exists(marker + ".child"), "OTHER_OWNED_GUI_STARTED");

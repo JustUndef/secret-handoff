@@ -14,7 +14,7 @@ public sealed record RunResult(Status Status, uint? TargetExitCode = null, int? 
 
 public sealed class RequestException : Exception
 {
-    public RequestException() : base("Auftrag ungültig. Format, lokale Pfade und Secret-Namen prüfen.") { }
+    public RequestException() : base("Invalid request. Check the format, local paths, and secret names.") { }
 }
 
 public static class StatusText
@@ -30,14 +30,14 @@ public static class StatusText
 
     public static string Describe(Status status) => status switch
     {
-        Status.Completed => "Ziel beendet; betreuter Prozessbaum bereinigt.",
-        Status.Cancelled => "Auftrag abgebrochen; kein betreuter Prozess läuft weiter.",
-        Status.TimedOut => "Zeitlimit erreicht; kein betreuter Prozess läuft weiter.",
-        Status.Busy => "Ein anderer Auftrag ist bereits aktiv.",
-        Status.InvalidRequest => "Auftrag ungültig. Format, lokale Pfade und Secret-Namen prüfen.",
-        Status.StartFailed => "Ziel konnte nicht betreut gestartet werden.",
-        Status.TargetFailed => "Ziel meldete einen Fehler; Prozessbaum bereinigt.",
-        Status.CleanupFailed => "Beendigung konnte nicht vollständig bestätigt werden.",
-        _ => "Interner Fehler; Auftrag beendet."
+        Status.Completed => "Target exited; managed process tree cleaned up.",
+        Status.Cancelled => "Request cancelled; no managed process remains running.",
+        Status.TimedOut => "Time limit reached; no managed process remains running.",
+        Status.Busy => "Another request is already active.",
+        Status.InvalidRequest => "Invalid request. Check the format, local paths, and secret names.",
+        Status.StartFailed => "Target could not be started under supervision.",
+        Status.TargetFailed => "Target reported a failure; process tree cleaned up.",
+        Status.CleanupFailed => "Process termination could not be fully confirmed.",
+        _ => "Internal error; request ended."
     };
 }

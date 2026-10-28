@@ -1,49 +1,53 @@
-# Installation und Releases
+# Installation and releases
 
 ## Windows 11 x64
 
-[GitHub-Releases](https://github.com/JustUndef/secret-handoff/releases) enthalten nach erfolgreichem Tag-Build den Installer, ein portables ZIP und `SHA256SUMS.txt`. Die Pakete sind derzeit nicht codesigniert. Installer und Paketbau ersetzen keine vollständige MVP-Abnahme; offene Prüfungen stehen in [TESTING.md](TESTING.md).
+[GitHub releases](https://github.com/JustUndef/secret-handoff/releases) contain the installer, a portable ZIP, and `SHA256SUMS.txt` after a successful tag build. No GitHub release had been published at the time of the October 28, 2026 repository review; successful manual workflow runs provide build artifacts instead. Packages are currently unsigned. Installers and packaging do not establish full MVP acceptance; outstanding checks are listed in [TESTING.md](TESTING.md).
 
-Der Installer installiert für den aktuellen Benutzer unter `%LOCALAPPDATA%\Programs\Secret Handoff`, legt einen Startmenüeintrag an und bietet die normale Windows-Deinstallation. Er benötigt keine Administratorrechte, registriert keine Dateizuordnung und startet keinen Auftrag automatisch. Das ZIP kann alternativ in einen eigenen Ordner entpackt werden. Beide Varianten enthalten .NET; eine separate Runtime-Installation ist nicht erforderlich.
+The installer uses English messages, installs for the current user under `%LOCALAPPDATA%\Programs\Secret Handoff`, adds Start menu entries for the application and documentation, and supports normal Windows uninstallation. It requires no administrator privileges, registers no file association, and starts no request automatically. Alternatively, extract the ZIP into a directory of your choice. Both formats include .NET; no separate runtime installation is required.
 
-Die optionale Checkbox **„Secret Handoff zum Benutzer-PATH hinzufügen (neue Terminals)“** ist bei einer neuen Installation ausgeschaltet. Bei Auswahl ergänzt der Installer ausschließlich den Installationsordner im Benutzer-PATH (`HKCU\Environment\Path`); der System-PATH bleibt unberührt. Bei erneuter Installation wird die vorherige Auswahl übernommen. Bereits vorhandene Einträge werden nicht übernommen oder bei der Deinstallation entfernt. Abwählen bei erneuter Installation und Deinstallieren entfernen nur den unverändert vorhandenen Eintrag, den dieser Installer selbst ergänzt hat. Andere Einträge und der Registry-Zeichenkettentyp bleiben erhalten; es wird kein alter vollständiger PATH-Snapshot zurückgeschrieben.
+The optional **Add Secret Handoff to the user PATH (new terminals)** checkbox is unchecked on a new installation. If selected, the installer adds only its installation directory to the user PATH (`HKCU\Environment\Path`); the system PATH is unchanged. Reinstallation preserves the previous selection. Pre-existing entries are not adopted as installer-owned or removed during uninstallation. Deselecting the option during reinstallation, or uninstalling, removes only the unchanged entry previously added by this installer. Other entries and the registry string type are preserved; no old full PATH snapshot is restored.
 
-Danach lässt sich `SecretHandoff.exe` ohne Installationspfad aufrufen. Windows wird über die Umgebungsänderung informiert. Bereits laufende Terminals und Codex behalten ihre bisherige Umgebung: Terminal bzw. Terminal-App und bei Bedarf Codex vollständig schließen und erneut starten. Die Option verändert nicht die eingeschränkte Umgebung genehmigter Zielprozesse. Secret-Werte werden niemals zum PATH hinzugefügt. Ein Installationsordner mit Semikolon kann für diese Option nicht verwendet werden.
+Afterward, `SecretHandoff.exe` can be invoked without its installation path. Windows is notified of the environment change. Existing terminals and Codex retain their previous environment: fully close and reopen the terminal or terminal application, and Codex if necessary. This option does not change the restricted environment of approved target processes. Secret values are never added to PATH. An installation directory containing a semicolon cannot be used with this option.
 
-Für stille Installationen aktiviert `/TASKS="userpath"` die Option; `/TASKS=""` wählt sie ausdrücklich ab. Das portable ZIP verändert den PATH nicht. Details zur Prüfung: [INSTALLER-TESTING.md](INSTALLER-TESTING.md).
+For silent installation, `/TASKS="userpath"` enables the option; `/TASKS=""` explicitly disables it. The portable ZIP does not modify PATH. Test details: [INSTALLER-TESTING.md](INSTALLER-TESTING.md).
 
-Über den Startmenüeintrag öffnet sich die Auftragsauswahl. Für Aufträge aus Codex liegt das zentrale Aufrufskript direkt neben der EXE:
+The Start menu entry opens the request file picker. For requests from Codex, the shared wrapper script is installed next to the EXE:
 
 ```powershell
 & "$env:LOCALAPPDATA\Programs\Secret Handoff\Invoke-Handoff.ps1" -RequestPath 'D:\Projects\Example\task.handoff.json'
 ```
 
-Das Skript verwendet die benachbarte EXE. Im Quellbaum verwendet es ersatzweise die Entwicklungsdemo unter `artifacts/demo`. Die Aufruferbindung und alle Sicherheitsgrenzen gelten unverändert. Eine angepasste PowerShell-Ausführungsrichtlinie wird weder gesetzt noch vorausgesetzt; wenn Skriptausführung blockiert ist, bleibt der direkte EXE-Aufruf mit den in [ARCHITECTURE.md](ARCHITECTURE.md) beschriebenen Lebenszyklusgrenzen möglich.
+The script uses the adjacent EXE. In the source tree, it falls back to the development demo under `artifacts/demo`. Caller binding and all security boundaries remain unchanged. The scripts neither set nor assume a modified PowerShell execution policy; if script execution is blocked, direct EXE invocation remains available with the lifecycle limitations described in [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## Automatischer Release
+## Automated releases
 
-Ein Push eines Tags wie `v0.1.0` baut und veröffentlicht das Release automatisch. `v0.1.0-rc.1`, `v0.1.0-alpha.1` und `v0.1.0-beta.1` erzeugen Vorabversionen. Der Workflow führt zuerst die synthetischen Integrationstests aus, baut dann Installer/ZIP, prüft die gepackte EXE und veröffentlicht erst bei Erfolg. Ungültige `v*`-Tags schlagen fehl. Bestehende Releases werden bei Wiederholungen nicht überschrieben. Der Auftrag zur Einrichtung setzt selbst keinen Versions-Tag.
+Pushing a tag such as `v0.1.0` automatically builds and publishes a release. Tags such as `v0.1.0-rc.1`, `v0.1.0-alpha.1`, and `v0.1.0-beta.1` create prereleases. The workflow first runs synthetic integration tests, then builds the installer/ZIP, checks the packaged EXE and installer behavior, and publishes only if these steps succeed. Invalid `v*` tags fail. Reruns do not overwrite existing releases. Creating the release workflow does not itself create a version tag.
+
+The following commands publish a release and should be run only when a release is intended:
 
 ```powershell
 git tag v0.1.0
 git push origin v0.1.0
 ```
 
-Der Build-Job besitzt nur Leserechte am Repository. Erst der nachgelagerte Veröffentlichungsjob erhält `contents: write`. Er verwendet den automatisch bereitgestellten `GITHUB_TOKEN`; eigene Zugangsdaten sind nicht nötig. Die Integrationstests verwenden ausschließlich synthetische lokale Prozesse. Der Paketbau kontaktiert die offiziellen Werkzeug-/Paketquellen, keine Secret-Provider.
+The build job has read-only repository permissions. Only the subsequent publishing job receives `contents: write`. It uses the automatically supplied `GITHUB_TOKEN`; no separate credentials are needed. Integration tests use only synthetic local processes. Packaging contacts official tool/package sources, not secret providers. GitHub Actions are pinned to commit SHAs; Dependabot is configured to propose action updates.
 
-## Lokaler Paketbau
+The separate [Windows CI workflow](https://github.com/JustUndef/secret-handoff/blob/main/.github/workflows/ci.yml) builds and runs the synthetic suite on pull requests and pushes to `main`. It has no release-publishing job. A new workflow or dependency update still needs a successful run before its behavior can be claimed as verified.
 
-Unter GitHub Actions kann der Workflow auch manuell über **Run workflow** mit einer Testversion gestartet werden. Dieser Weg führt dieselben Build-, Paket- und Installer-Prüfungen aus und lädt die Pakete als Workflow-Artefakt hoch, veröffentlicht aber kein Release.
+## Local packaging
 
-Voraussetzungen: .NET-SDK laut `global.json` und vorhandenes Inno Setup 6. Keine globale Installation durch die Build-Skripte.
+On GitHub Actions, the release workflow can also be started manually using **Run workflow** with a test version. This performs the same build, package, and installer checks and uploads the packages as a workflow artifact, without publishing a release.
+
+Prerequisites: the .NET SDK selected by `global.json` and an existing Inno Setup 6 installation. The build scripts install no tools globally. See [CONTRIBUTING.md](CONTRIBUTING.md) for source checkout setup.
 
 ```powershell
 .\scripts\Build-Prototype.ps1
 .\scripts\Build-Release.ps1 -Version 0.1.0
-# RELEASE_READY zeigt den neuen Ausgabeordner an.
-.\scripts\Test-Package.ps1 -AppDirectory '<Ausgabe-Basisordner>\app'
+# RELEASE_READY identifies the new output directory.
+.\scripts\Test-Package.ps1 -AppDirectory '<build-base-directory>\app'
 ```
 
-Optional `-DotnetPath` bzw. `-IsccPath` für explizite Werkzeugpfade verwenden. `Build-Prototype.ps1` unterstützt ebenfalls `-DotnetPath`. Das Release-Skript lädt ausschließlich für den Release-Bau die offiziellen Runtime-Pakete von NuGet; die übrigen Builds bleiben ohne externe Paketquellen. Jeder Paketbau verwendet einen neuen Ordner unter `artifacts/release-builds`, damit keine alten Dateien mitgeliefert werden. Nur das Programm, der zentrale Aufrufer und öffentliche Dokumentation werden eingepackt; keine Demoaufträge, Testprogramme oder Testberichte aus `artifacts`.
+Use `-DotnetPath` or `-IsccPath` for explicit tool paths. Without an explicit SDK path, the build scripts look under the user profile, then on PATH. `Build-Prototype.ps1` also accepts `-DotnetPath`. The release script downloads official runtime packages from NuGet only for release packaging; prototype builds use no external package sources. Each package build uses a fresh directory under `artifacts/release-builds`, preventing stale files from being included. Packages contain the program, shared wrapper, and public documentation, including agent/contributor guidance; they exclude demo requests, test programs, and generated reports from `artifacts`.
 
-Die gebündelte Runtime ist in `release-runtime.json` auf **10.0.14** festgelegt, geprüft am 28. Oktober 2026 anhand der [offiziellen .NET-10-Release-Metadaten](https://builds.dotnet.microsoft.com/dotnet/release-metadata/10.0/releases.json). Dadurch bestimmt nicht das ältere Entwicklungs-SDK die ausgelieferte Runtime. Der Pakettest prüft beide enthaltenen Framework-Versionen. Bei .NET-Sicherheitsupdates diese Datei aktualisieren und neue Pakete bauen und installieren. Die enthaltene Runtime erhält keine unabhängigen Updates durch den Launcher; es gibt keinen Autoupdater. Grundlage: [.NET-Publishing](https://learn.microsoft.com/en-us/dotnet/core/deploying/) und [Inno Setup: Benutzerinstallation](https://jrsoftware.org/ishelp/topic_setup_privilegesrequired.htm).
+The bundled runtime is pinned to **10.0.14** in `release-runtime.json`, checked on October 28, 2026 against the [official .NET 10 release metadata](https://builds.dotnet.microsoft.com/dotnet/release-metadata/10.0/releases.json). This prevents the older development SDK from determining the shipped runtime version. The package test checks both included framework versions. Runtime, Desktop, and host license/notice files are copied verbatim from those restored packages into `third-party/`; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). Review runtime security updates, update the pin, and build and install new packages as needed. The bundled runtime receives no independent updates from the launcher; there is no automatic updater. References: [.NET publishing](https://learn.microsoft.com/en-us/dotnet/core/deploying/) and [Inno Setup: per-user installation](https://jrsoftware.org/ishelp/topic_setup_privilegesrequired.htm).

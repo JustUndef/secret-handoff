@@ -3,7 +3,7 @@ using System.Diagnostics;
 // Synthetic fixtures only. Never print environment contents or arguments.
 internal static class Program
 {
-    internal static readonly string[] Vector = ["", "a b", "quote\"inside", "trailing\\", "\\\"", "Ünicode", "& | > % $ ;", "%PATH%", "${NAME}"];
+    internal static readonly string[] Vector = ["", "a b", "quote\"inside", "trailing\\", "\\\"", "Unicode-\u03A9", "& | > % $ ;", "%PATH%", "${NAME}"];
 
     private static int Main(string[] args)
     {
@@ -15,13 +15,23 @@ internal static class Program
                     Environment.GetEnvironmentVariable("SECOND_SECRET") == "synthetic-demo-two" ? 0 : 49;
             if (args[0] == "check")
             {
-                if (Environment.GetEnvironmentVariable("EXAMPLE_API_TOKEN") != " synthetic-only-Ü\\\" ") return 41;
+                if (Environment.GetEnvironmentVariable("EXAMPLE_API_TOKEN") != " synthetic-only-\u03A9\\\" ") return 41;
                 if (Environment.GetEnvironmentVariable("SECOND_SECRET") != "synthetic-two") return 42;
                 if (!args.Skip(1).SequenceEqual(Vector)) return 43;
                 var keys = Environment.GetEnvironmentVariables().Keys.Cast<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
                 if (!keys.SetEquals(["PATH", "SystemRoot", "WINDIR", "EXAMPLE_API_TOKEN", "SECOND_SECRET"])) return 44;
                 if (Environment.CurrentDirectory != AppContext.BaseDirectory.TrimEnd('\\')) return 45;
                 return 0;
+            }
+            if (args[0] == "cli-check")
+            {
+                if (Environment.GetEnvironmentVariable("EXAMPLE_API_TOKEN") != "synthetic-demo-one" ||
+                    Environment.GetEnvironmentVariable("SECOND_SECRET") != "synthetic-demo-two") return 41;
+                string[] expected = ["", "a b", "quote\"inside", "trailing\\", "\\\"", "Unicode-\u03A9", "& | > % $ ;", "--help", "--secret", "--request", "--working-directory", "--watch-parent", "--"];
+                if (!args.Skip(2).SequenceEqual(expected)) return 43;
+                if (Environment.CurrentDirectory != args[1]) return 45;
+                var keys = Environment.GetEnvironmentVariables().Keys.Cast<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
+                return keys.SetEquals(["PATH", "SystemRoot", "WINDIR", "EXAMPLE_API_TOKEN", "SECOND_SECRET"]) ? 0 : 44;
             }
             if (args[0] == "fail") return 37;
             if (args[0] == "flood")

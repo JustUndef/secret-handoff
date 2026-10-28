@@ -11,7 +11,7 @@ internal static partial class Program
 {
     private static string root = "", probe = "", scratch = "";
     private static int failures;
-    private static readonly string[] Vector = ["", "a b", "quote\"inside", "trailing\\", "\\\"", "Ünicode", "& | > % $ ;", "%PATH%", "${NAME}"];
+    private static readonly string[] Vector = ["", "a b", "quote\"inside", "trailing\\", "\\\"", "Unicode-\u03A9", "& | > % $ ;", "%PATH%", "${NAME}"];
 
     [STAThread]
     private static int Main(string[] args)
@@ -41,6 +41,12 @@ internal static partial class Program
         probe = Path.Combine(root, "tests/SyntheticProbe/bin/Debug/net10.0-windows/SyntheticProbe.exe");
         scratch = Path.Combine(root, "artifacts", "tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(scratch);
+        if (args.Length == 1 && args[0] == "--cli-tests")
+        {
+            RegisterCliTests();
+            Console.WriteLine(failures == 0 ? "ALL_CLI_TESTS_PASSED" : "CLI_TESTS_FAILED");
+            return failures == 0 ? 0 : 1;
+        }
         if (args.Length == 1 && args[0] == "--tool-cancel-test")
         {
             try { HoldWrapperForCancellation(); return 0; }
@@ -64,6 +70,7 @@ internal static partial class Program
             return 0;
         }
         Test("request-contract", RequestContract);
+        RegisterCliTests();
         RegisterLocalPathTests();
         Test("environment-and-arguments", () => AssertResult(Run(Request(["check", .. Vector])), Status.Completed));
         Test("pre-cancel-no-start", PreCancel);
@@ -122,9 +129,9 @@ internal static partial class Program
         $"STATUS_{(int)result.Status}_EXPECTED_{(int)expected}_WIN32_{result.WindowsError ?? 0}_TARGET_{result.TargetExitCode ?? 0}");
     private static LaunchRequest Request(params string[] args) => new("synthetic-test", probe,
         args.ToImmutableArray(), Path.GetDirectoryName(probe)!,
-        [new("EXAMPLE_API_TOKEN", "Synthetischer Testwert"), new("SECOND_SECRET", "Zweiter Testwert")]);
+        [new("EXAMPLE_API_TOKEN", "Synthetic test value"), new("SECOND_SECRET", "Second test value")]);
     private static Dictionary<string, string> Values() => new(StringComparer.Ordinal)
-    { ["EXAMPLE_API_TOKEN"] = " synthetic-only-Ü\\\" ", ["SECOND_SECRET"] = "synthetic-two" };
+    { ["EXAMPLE_API_TOKEN"] = " synthetic-only-\u03A9\\\" ", ["SECOND_SECRET"] = "synthetic-two" };
     private static RunResult Run(LaunchRequest request) => new WindowsProcessRunner().RunAsync(request, Values(), CancellationToken.None).GetAwaiter().GetResult();
 
     private static string WriteRequest(string json)
@@ -137,7 +144,7 @@ internal static partial class Program
     private static string Json() => JsonSerializer.Serialize(new
     {
         executable = probe, arguments = new[] { "fail" }, workingDirectory = Path.GetDirectoryName(probe),
-        secrets = new[] { new { name = "EXAMPLE_API_TOKEN", description = "Synthetischer Testwert" } }
+        secrets = new[] { new { name = "EXAMPLE_API_TOKEN", description = "Synthetic test value" } }
     });
 
     private static void RequestContract()
@@ -369,8 +376,8 @@ internal static partial class Program
         string path = WriteRequest(JsonSerializer.Serialize(new
         {
             executable = probe, arguments = new[] { "demo" }, workingDirectory = Path.GetDirectoryName(probe),
-            secrets = new[] { new { name = "EXAMPLE_API_TOKEN", description = "Synthetischer Test" },
-                new { name = "SECOND_SECRET", description = "Synthetischer Test" } }
+            secrets = new[] { new { name = "EXAMPLE_API_TOKEN", description = "Synthetic test" },
+                new { name = "SECOND_SECRET", description = "Synthetic test" } }
         }));
         string gui = Path.Combine(root, "src/SecretHandoff/bin/Debug/net10.0-windows/SecretHandoff.exe");
         var info = new ProcessStartInfo(gui) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
@@ -381,9 +388,9 @@ internal static partial class Program
         {
             var controls = FillAndStart(process);
             var watch = Stopwatch.StartNew();
-            while (!controls.Any(h => Caption(h) == "Schließen") && watch.ElapsedMilliseconds < 8000) Thread.Sleep(20);
+            while (!controls.Any(h => Caption(h) == "Close") && watch.ElapsedMilliseconds < 8000) Thread.Sleep(20);
             Assert(controls.Any(h => Caption(h).StartsWith("COMPLETED", StringComparison.Ordinal)), "GUI_NOT_COMPLETED");
-            var close = controls.Single(h => Caption(h) == "Schließen");
+            var close = controls.Single(h => Caption(h) == "Close");
             SendOwnedGuiMessage(process, close, 0xF5, "");
             Assert(process.WaitForExit(5000) && process.ExitCode == 0, "GUI_EXIT");
             Assert(stdout.GetAwaiter().GetResult() == "" && stderr.GetAwaiter().GetResult() == "", "GUI_OUTPUT");
@@ -394,13 +401,8 @@ internal static partial class Program
     // Test-only automation of our own explicitly started synthetic instance. Never accesses the OS clipboard.
     private static List<IntPtr> FillAndStart(Process process, bool startTarget = true, Process? wrapperOwner = null)
     {
-        var watch = Stopwatch.StartNew();
-        while (process.MainWindowHandle == IntPtr.Zero && !process.HasExited && watch.ElapsedMilliseconds < 5000)
-        { Thread.Sleep(20); process.Refresh(); }
-        Assert(process.MainWindowHandle != IntPtr.Zero, "GUI_NOT_SHOWN");
-        Assert(process.WaitForInputIdle(5000), "GUI_NOT_IDLE");
+        var controls = WaitOwnedGuiControls(process);
         AssertWindowOwned(process, process.MainWindowHandle, wrapperOwner);
-        var controls = Children(process.MainWindowHandle);
         var edits = controls.Where(h => ClassName(h).StartsWith("WindowsForms10.Edit", StringComparison.OrdinalIgnoreCase) &&
             (GetWindowLongW(h, -16) & 0x4) == 0).OrderBy(h => { GetWindowRect(h, out var rect); return rect.Top; }).ToArray();
         Assert(edits.Length == 2, $"GUI_INPUT_COUNT_{edits.Length}");
@@ -408,7 +410,7 @@ internal static partial class Program
         SendOwnedGuiMessage(process, edits[1], 0xC, "synthetic-demo-two", wrapperOwner);
         if (startTarget)
         {
-            var start = controls.Single(h => Caption(h) == "Starten");
+            var start = controls.Single(h => Caption(h) == "Start");
             SendOwnedGuiMessage(process, start, 0xF5, "", wrapperOwner);
         }
         return controls;
@@ -442,7 +444,7 @@ internal static partial class Program
         })
         {
             bool rejected = false;
-            try { LaunchOptions.Parse(bad); } catch (RequestException) { rejected = true; }
+            try { LaunchOptions.Parse(bad); } catch (CliException) { rejected = true; }
             Assert(rejected, "INVALID_PARENT_OPTIONS_ACCEPTED");
         }
     }
@@ -463,8 +465,8 @@ internal static partial class Program
     private static string TreeRequest(string marker) => WriteRequest(JsonSerializer.Serialize(new
     {
         executable = probe, arguments = new[] { "tree", marker, "wait" }, workingDirectory = Path.GetDirectoryName(probe),
-        secrets = new[] { new { name = "EXAMPLE_API_TOKEN", description = "Synthetischer Aufrufertest" },
-            new { name = "SECOND_SECRET", description = "Synthetischer Aufrufertest" } }
+        secrets = new[] { new { name = "EXAMPLE_API_TOKEN", description = "Synthetic caller test" },
+            new { name = "SECOND_SECRET", description = "Synthetic caller test" } }
     }));
 
     private static Process StartSupervisedGui(Process owner, long creation, string path)
@@ -637,9 +639,9 @@ internal static partial class Program
             Assert(gui != null, "WRAPPER_GUI_MISSING");
             var controls = FillAndStart(gui!, wrapperOwner: wrapper);
             watch.Restart();
-            while (!controls.Any(h => Caption(h) == "Schließen") && watch.ElapsedMilliseconds < 8000) Thread.Sleep(20);
+            while (!controls.Any(h => Caption(h) == "Close") && watch.ElapsedMilliseconds < 8000) Thread.Sleep(20);
             Assert(controls.Any(h => Caption(h).StartsWith("COMPLETED", StringComparison.Ordinal)), "WRAPPER_GUI_NOT_COMPLETED");
-            var close = controls.Single(h => Caption(h) == "Schließen");
+            var close = controls.Single(h => Caption(h) == "Close");
             SendOwnedGuiMessage(gui!, close, 0xF5, "", wrapper);
             Assert(wrapper.WaitForExit(5000) && wrapper.ExitCode == 0, "WRAPPER_EXIT");
             const string hostDiagnostic = "Attempting to perform the InitializeDefaultDrives operation on the 'FileSystem' provider failed.";
@@ -661,8 +663,8 @@ internal static partial class Program
         string request = WriteRequest(JsonSerializer.Serialize(new
         {
             executable = probe, arguments = new[] { "tree", marker, "wait" }, workingDirectory = Path.GetDirectoryName(probe),
-            secrets = new[] { new { name = "EXAMPLE_API_TOKEN", description = "Synthetischer Abbruchtest" },
-                new { name = "SECOND_SECRET", description = "Synthetischer Abbruchtest" } }
+            secrets = new[] { new { name = "EXAMPLE_API_TOKEN", description = "Synthetic cancellation test" },
+                new { name = "SECOND_SECRET", description = "Synthetic cancellation test" } }
         }));
         string shell = Environment.GetEnvironmentVariable("SHANDOFF_TEST_POWERSHELL") ?? throw new TestFailure("SHELL_REQUIRED");
         var info = new ProcessStartInfo(shell) { UseShellExecute = false, CreateNoWindow = true };

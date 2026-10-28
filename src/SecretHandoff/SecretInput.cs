@@ -15,7 +15,7 @@ internal sealed class SecretInput : TextBox
         ShortcutsEnabled = false;
         MaxLength = 16385; // Detect overflow rather than silently accepting a truncated maximum value.
         ContextMenuStrip = new ContextMenuStrip();
-        ContextMenuStrip.Items.Add("Einfügen", null, (_, _) => PasteValue());
+        ContextMenuStrip.Items.Add("Paste", null, (_, _) => PasteValue());
     }
 
     internal void PasteValue()
@@ -23,14 +23,14 @@ internal sealed class SecretInput : TextBox
         try
         {
             string? text = readClipboard();
-            if (text is null) { showError("Die Zwischenablage enthält keinen Text."); return; }
+            if (text is null) { showError("The clipboard contains no text."); return; }
             int length = TextLength - SelectionLength + text.Length;
             if (length > 16384 || text.IndexOfAny(['\0', '\r', '\n']) >= 0)
-            { showError("Nur einzeilige Werte mit höchstens 16.384 Zeichen einfügen."); return; }
+            { showError("Paste single-line values of at most 16,384 characters."); return; }
             SelectedText = text;
             Focus();
         }
-        catch { showError("Zwischenablage momentan nicht verfügbar. Bitte erneut versuchen."); }
+        catch { showError("Clipboard temporarily unavailable. Please try again."); }
     }
 
     internal bool HandleSecretKey(Keys keys)

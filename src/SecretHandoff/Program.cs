@@ -11,11 +11,19 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
-        Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
-        ApplicationConfiguration.Initialize();
-        bool supervised = args.Contains("--watch-parent", StringComparer.Ordinal);
+        bool supervised = false;
+        bool commandLine = args.Length != 0;
         try
         {
+            var options = LaunchOptions.Parse(args); // Captures caller CWD before any UI.
+            if (options.Help)
+            {
+                Console.Out.WriteLine(CliHelp.Text);
+                return 0;
+            }
+            supervised = options.ParentId != null;
+            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
+            ApplicationConfiguration.Initialize();
             string sid = WindowsIdentity.GetCurrent().User?.Value ?? throw new InvalidOperationException();
             using var single = new Mutex(false, @"Local\SecretHandoff." + sid);
             bool acquired;
@@ -24,43 +32,58 @@ internal static class Program
             if (!acquired) return (int)Status.Busy;
             try
             {
-                var options = LaunchOptions.Parse(args);
                 using var parent = options.ParentId is uint parentId
                     ? new ParentProcessWatch(parentId, options.ParentCreation!.Value) : null;
                 if (parent?.Terminated.IsCancellationRequested == true) return (int)Status.Cancelled;
-                string path;
-                if (options.RequestPath is null)
+                var request = options.DirectRequest;
+                if (request is null && options.RequestPath is null)
                 {
                     using var picker = new OpenFileDialog
                     {
-                        Title = "Secret Handoff – Auftrag wählen",
-                        Filter = "Handoff-Auftrag (*.json)|*.json|Alle Dateien (*.*)|*.*",
+                        Title = "Secret Handoff – Select request",
+                        Filter = "Handoff request (*.json)|*.json|All files (*.*)|*.*",
                         AddToRecent = false, CheckFileExists = true, RestoreDirectory = true
                     };
                     if (picker.ShowDialog() != DialogResult.OK) return (int)Status.Cancelled;
-                    path = picker.FileName;
+                    request = RequestLoader.Load(picker.FileName);
                 }
-                else path = options.RequestPath;
-                var request = RequestLoader.Load(path);
+                else if (request is null) request = RequestLoader.Load(options.RequestPath!);
                 var form = new ApprovalForm(request, parentTermination: parent?.Terminated ?? default);
-                return (int)RunApprovalSession(form, reportUiFailure: supervised ? null : ShowUiFailure).Status;
+                return (int)RunApprovalSession(form, reportUiFailure: commandLine || supervised ? null : ShowUiFailure).Status;
             }
             finally { single.ReleaseMutex(); }
         }
-        catch (ParentWatchException e) { return (int)e.Status; }
+        catch (CliException e)
+        {
+            WriteDiagnostic("INVALID_REQUEST: " + e.Message); // Own fixed strings only.
+            return (int)Status.InvalidRequest;
+        }
+        catch (ParentWatchException e)
+        {
+            if (commandLine) WriteDiagnostic(StatusText.Category(e.Status) + ": " + StatusText.Describe(e.Status));
+            return (int)e.Status;
+        }
         catch (RequestException)
         {
-            if (!supervised)
+            if (commandLine) WriteDiagnostic("INVALID_REQUEST: " + StatusText.Describe(Status.InvalidRequest) + " Help: --help.");
+            else if (!supervised)
                 MessageBox.Show(StatusText.Describe(Status.InvalidRequest), "Secret Handoff", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return (int)Status.InvalidRequest;
         }
         catch
         {
             // Never expose raw exception messages, command output, or crash uploads.
-            if (!supervised)
+            if (commandLine) WriteDiagnostic("INTERNAL_ERROR: " + StatusText.Describe(Status.InternalError));
+            else if (!supervised)
                 ShowUiFailure(new RunResult(Status.InternalError));
             return (int)Status.InternalError;
         }
+    }
+
+    private static void WriteDiagnostic(string text)
+    {
+        try { Console.Error.WriteLine(text); }
+        catch { /* Missing/closed terminal must not replace the fixed exit code. */ }
     }
 
     internal static RunResult RunApprovalSession(ApprovalForm form, Action<RunResult>? reportUiFailure = null)

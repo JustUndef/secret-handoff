@@ -16,8 +16,8 @@ internal sealed class ApprovalForm : Form
     private bool running, terminal, closingAfterRun, lifecycleDisposed;
     internal List<SecretInput> Inputs { get; } = [];
     internal List<Button> PasteButtons { get; } = [];
-    internal Button StartButton { get; } = new() { Text = "Starten", AutoSize = true, Enabled = false };
-    internal Button CancelButtonControl { get; } = new() { Text = "Abbrechen", AutoSize = true };
+    internal Button StartButton { get; } = new() { Text = "Start", AutoSize = true, Enabled = false };
+    internal Button CancelButtonControl { get; } = new() { Text = "Cancel", AutoSize = true };
     internal Label MessageLabel { get; } = new() { AutoSize = true, MaximumSize = new Size(850, 0) };
     internal RunResult Result { get; private set; } = new(Status.Cancelled);
     internal string Preview { get; }
@@ -33,7 +33,7 @@ internal sealed class ApprovalForm : Form
         this.approvalLimit = approvalLimit ?? TimeSpan.FromMinutes(5);
         this.parentTermination = parentTermination;
         clipboard ??= () => Clipboard.ContainsText() ? Clipboard.GetText() : null;
-        Text = "Secret Handoff – Auftrag prüfen";
+        Text = "Secret Handoff – Review request";
         StartPosition = FormStartPosition.CenterScreen;
         MinimumSize = new Size(720, 580);
         Size = new Size(960, 820);
@@ -51,27 +51,27 @@ internal sealed class ApprovalForm : Form
         Controls.Add(layout);
         layout.Controls.Add(new Label
         {
-            Text = "Prototyp · ausschließlich synthetische Testwerte verwenden",
+            Text = "Prototype · use synthetic test values only",
             AutoSize = true, ForeColor = Color.Maroon, Margin = new Padding(0, 0, 0, 10)
         }, 0, 0);
 
-        Preview = "Auftrag: " + request.SourcePath + "\r\n\r\nProgramm: " + request.Executable +
-            "\r\nArbeitsverzeichnis: " + request.WorkingDirectory + "\r\n\r\nArgumente (einzeln):\r\n" +
-            (request.Arguments.Length == 0 ? "(keine)" : string.Join("\r\n", request.Arguments.Select((a, i) =>
+        Preview = "Request: " + request.SourcePath + "\r\n\r\nProgram: " + request.Executable +
+            "\r\nWorking directory: " + request.WorkingDirectory + "\r\n\r\nArguments (individual):\r\n" +
+            (request.Arguments.Length == 0 ? "(none)" : string.Join("\r\n", request.Arguments.Select((a, i) =>
                 $"[{i}] {JsonSerializer.Serialize(a)}")));
         var preview = new TextBox
         {
             Text = Preview, Multiline = true, ReadOnly = true, Dock = DockStyle.Fill,
             ScrollBars = ScrollBars.Both, WordWrap = false, BackColor = SystemColors.Window,
-            AccessibleName = "Vollständiger Zielaufruf", TabStop = true
+            AccessibleName = "Complete target invocation", TabStop = true
         };
         layout.Controls.Add(preview, 0, 1);
         layout.Controls.Add(new Label
         {
-            Text = "Freigabe: 5 Minuten · Laufzeit: höchstens 15 Minuten. Ausgaben werden verworfen.\r\n" +
-                "Nur minimale Windows-Umgebung plus Ihre Eingaben. Ziel und Nachkommen können die Werte lesen und weitergeben.\r\n" +
-                "Abbrechen beendet den betreuten Prozessbaum; beim Zielende werden verbleibende Nachkommen beendet." +
-                (parentTermination.CanBeCanceled ? "\r\nEndet der überwachte Aufrufer, wird dieser Auftrag automatisch beendet." : ""),
+            Text = "Approval: 5 minutes · Execution: up to 15 minutes. Output is discarded.\r\n" +
+                "Minimal Windows environment plus your input only. The target and descendants can read and share these values.\r\n" +
+                "Cancel stops the managed process tree; remaining descendants are terminated when the target exits." +
+                (parentTermination.CanBeCanceled ? "\r\nIf the monitored caller exits, this task is stopped automatically." : ""),
             AutoSize = true, Margin = new Padding(0, 10, 0, 10)
         }, 0, 2);
         var entries = new TableLayoutPanel { Dock = DockStyle.Fill, AutoScroll = true, ColumnCount = 2, Padding = new Padding(0, 0, 18, 0) };
@@ -86,7 +86,7 @@ internal sealed class ApprovalForm : Form
             entries.SetColumnSpan(label, 2);
             var input = new SecretInput(clipboard, ShowInputError) { Dock = DockStyle.Top, AccessibleName = spec.Name };
             input.TextChanged += (_, _) => RefreshValidity();
-            var paste = new Button { Text = "Einfügen", AutoSize = true, AccessibleName = "Einfügen: " + spec.Name };
+            var paste = new Button { Text = "Paste", AutoSize = true, AccessibleName = "Paste: " + spec.Name };
             paste.Click += (_, _) => input.PasteValue();
             entries.Controls.Add(input, 0, row);
             entries.Controls.Add(paste, 1, row++);
@@ -116,7 +116,7 @@ internal sealed class ApprovalForm : Form
                 e.Cancel = true;
                 closingAfterRun = true;
                 lifecycle.Cancel();
-                MessageLabel.Text = "Auftrag wird beendet und bereinigt …";
+                MessageLabel.Text = "Stopping the task and cleaning up …";
             }
             else ClearInputs();
         };
@@ -135,7 +135,7 @@ internal sealed class ApprovalForm : Form
         if (running)
         {
             closingAfterRun = true;
-            MessageLabel.Text = "Aufrufer beendet. Auftrag wird beendet und bereinigt …";
+            MessageLabel.Text = "Caller exited. Stopping the task and cleaning up …";
         }
         else
         {
@@ -155,7 +155,7 @@ internal sealed class ApprovalForm : Form
     {
         if (running || terminal) return;
         StartButton.Enabled = Inputs.Count == request.Secrets.Length && Inputs.All(i => EnvironmentPolicy.ValidValue(i.Text));
-        MessageLabel.Text = StartButton.Enabled ? "Auftrag prüfen und ausdrücklich starten." : "Alle benötigten Testwerte eingeben.";
+        MessageLabel.Text = StartButton.Enabled ? "Review the request and explicitly select Start." : "Enter all required synthetic test values.";
     }
 
     private void ShowInputError(string text) => MessageLabel.Text = text;
@@ -171,11 +171,11 @@ internal sealed class ApprovalForm : Form
         running = true;
         approvalTimer.Stop();
         StartButton.Enabled = false;
-        CancelButtonControl.Text = "Auftrag beenden";
+        CancelButtonControl.Text = "Stop task";
         var values = new Dictionary<string, string>(StringComparer.Ordinal);
         for (int i = 0; i < Inputs.Count; i++) values.Add(request.Secrets[i].Name, Inputs[i].Text);
         ClearInputs();
-        MessageLabel.Text = "Auftrag läuft. Ausgaben werden verworfen.";
+        MessageLabel.Text = "Task running. Output is discarded.";
         Result = await lifecycle.StartAsync(request, values);
         running = false;
         // Disposal can finish the runner while this continuation is still queued in WinForms.
@@ -189,7 +189,7 @@ internal sealed class ApprovalForm : Form
         if (running)
         {
             lifecycle.Cancel();
-            MessageLabel.Text = "Auftrag wird beendet und bereinigt …";
+            MessageLabel.Text = "Stopping the task and cleaning up …";
         }
         else Close();
     }
@@ -201,10 +201,10 @@ internal sealed class ApprovalForm : Form
         approvalTimer.Stop();
         ClearInputs();
         StartButton.Enabled = false;
-        CancelButtonControl.Text = "Schließen";
+        CancelButtonControl.Text = "Close";
         MessageLabel.Text = StatusText.Category(result.Status) + " · " + StatusText.Describe(result.Status) +
-            (result.TargetExitCode is uint target ? $" Ziel-Exitcode: {target}." : "") +
-            (result.WindowsError is int error ? $" Windows-Fehlercode: {error}." : "");
+            (result.TargetExitCode is uint target ? $" Target exit code: {target}." : "") +
+            (result.WindowsError is int error ? $" Windows error code: {error}." : "");
     }
 
     private void ClearInputs()

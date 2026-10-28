@@ -1,115 +1,167 @@
-# Prototyp und Prüfbericht
+# Prototype and test evidence
 
-Stand: 28. Oktober 2026. Durchgängiger Prototyp mit Aufruferüberwachung und vier Review-Nachbesserungen; **MVP-Abnahme noch nicht vollständig**. Sämtliche Werte und Zielprogramme in diesen Prüfungen sind synthetisch/lokal. Keine echten Secrets oder Dienste verwendet.
+As of October 28, 2026. End-to-end prototype with direct CLI input, caller monitoring, and four review fixes; **full MVP acceptance is still pending**. All values and target programs in these checks are synthetic/local. No real secrets or services were used.
 
-## Reproduzieren
+## English public project material
 
-### Ergänzung: Installer und Release-Bau
+Application-owned GUI labels, accessibility text, fixed status/error messages, CLI help, request source labels, installer messages/shortcuts, and synthetic example descriptions now use English. Matching GUI assertions were updated. Unicode fixtures use a neutral non-ASCII character expressed with a C# Unicode escape, preserving argument, value, and path compatibility coverage. The shared agent and contribution rules require English public project material.
 
-Am 28. Oktober zusätzlich ausgeführt: erneuter Entwicklungsbuild mit 0 Warnungen/Fehlern und alle 47 synthetischen Testgruppen erfolgreich außerhalb der Sandbox. Ein selbstenthaltendes `win-x64`-Paket in Version `0.1.0-rc.1` wurde lokal mit den offiziellen .NET-Runtime-Paketen gebaut; Inno Setup erzeugte den Benutzer-Installer. `Test-Package.ps1` meldete `PACKAGE_SMOKE_PASSED`. `Test-Installer.ps1` installierte in einen neuen Projekt-Testordner, prüfte die installierte EXE, installierte erneut und deinstallierte erfolgreich (`INSTALLER_ROUNDTRIP_PASSED`). Der Test änderte keine Ausführungsrichtlinie und verwendete keine echten Secrets. Ein erster Sandbox-Lauf hatte wegen blockierter Metadatenabfragen fehlgeschlagen; die Pfadpolicy wurde nicht gelockert.
+Executed after these changes on October 28, 2026: development build with **0 warnings and 0 errors**; full synthetic suite outside the sandbox with **60 PASS, 0 FAIL, `ALL_TESTS_PASSED`, exit 0** (`artifacts/english-tests.txt`). The empty synthetic approval dialog was rendered and visually checked at its default size (`artifacts/english-preview.png`); labels, instructions, inputs, and buttons were readable. Manual clipboard/keyboard and multiple-DPI acceptance remain outstanding.
 
-Das prüft Paketinhalt, Start/Fehlerstatus der gepackten EXE, stille Installation, erneute Installation derselben Version und Deinstallation. Ein Upgrade von einer älteren veröffentlichten Version, die manuelle Installer-Oberfläche und ein System ohne vorhandene .NET-Installation sind noch nicht praktisch geprüft. SHA-256-Prüfsummen belegen Dateiintegrität bei bekanntem Vergleichswert, keine Herausgeberidentität; die Pakete sind nicht codesigniert. Build- und Release-Anleitung: [RELEASING.md](RELEASING.md).
+The self-contained test package rebuilt successfully. Packaged help and invalid-CLI checks, normal install/reinstall/uninstall, and all six isolated PATH test groups passed. Five original component notice files matched the source packages byte-for-byte in the app directory and ZIP, and release-file SHA-256 checks matched. Static language checks found no remaining localized prose in the 59 public source/configuration/documentation files or bundled Markdown documentation. Markdown links/fences and diff whitespace checks passed. These checks created no version tag and published no release.
 
-Abschließend wurde die gebündelte Runtime unabhängig vom Entwicklungs-SDK auf **10.0.14** festgelegt. Lokaler Neubau, Prüfung beider Framework-Versionen, Installation/erneute Installation/Deinstallation und Nachprüfung der SHA-256-Datei bestanden. Der [abschließende GitHub-Actions-Lauf](https://github.com/JustUndef/secret-handoff/actions/runs/40711889604) für Commit `43fbe42` bestand auf `windows-2025`: synthetische Integrationstests, selbstenthaltender Paketbau, Runtime-/EXE-Prüfung, Installer-Rundlauf und Artefakt-Upload. Der Veröffentlichungsjob wurde bei diesem manuellen Test wie vorgesehen übersprungen. Ein tatsächlicher Tag-Push mit Veröffentlichung eines GitHub-Releases wurde nicht ausgeführt; dieser letzte Veröffentlichungsweg bleibt bis zum ersten gewollten Versions-Tag praktisch ungetestet.
+## Direct CLI input without JSON
 
-In PowerShell im Projektordner:
+**Implemented:** `--secret NAME [--description TEXT]`, multiple secrets, optional `--working-directory`, final target separator `--`, existing `--request`, file picker, and `--watch-parent` in both modes. Both modes share the validator, immutable snapshot, approval dialog, environment policy, and process runner. Direct mode writes no temporary request file. Secret values remain local masked dialog input only. Full contract and defaults: [README.md](README.md), [ARCHITECTURE.md](ARCHITECTURE.md), and `SecretHandoff.exe --help`.
+
+The EXE was changed from `WinExe` to the console subsystem, including disabling automatic WinForms `WinExe` inference. The test reads the apphost's actual PE header and checks subsystem 3. The manifest includes `consoleAllocationPolicy=detached` for GUI use without a newly allocated console on Windows 11 24H2 and later. Process creation, target handle lists, and job cleanup were unchanged. Test helpers now wait for their own visible WinForms controls with stable layout; `WaitForInputIdle` is unsuitable for the console process. Process/window ownership is still checked before sending mutating GUI messages.
+
+**Executed:** `scripts/Build-Prototype.ps1 -SkipTests` using SDK 10.0.203: **0 warnings, 0 errors**. The built test runner then ran outside the sandbox on Windows 11 x64, build 26300, with PowerShell **7.6.5** and local Windows **cmd.exe**: **60 PASS, no FAIL, `ALL_TESTS_PASSED`, exit code 0**. Value-free result log: `artifacts/cli-test-results.txt`. This includes the previous 47 test groups and these 13 new groups:
+
+| Test group | Actually checked |
+| --- | --- |
+| `cli-direct-snapshot-and-descriptions` | Multiple secrets; explicit, missing, and empty descriptions; snapshot unchanged after input-array/CWD changes; absolute preview; no request file created during parsing; JSON accepts reordered caller option |
+| `cli-options-rejected` | Missing/unknown options, file/direct conflicts, duplicate single-use options, misplaced descriptions, missing separator/target/secret, relative EXE, case duplicates, denied names, description/argument limits, and NUL rejected |
+| `cli-working-directories` | Absolute directory, relative Unicode directory with spaces, dot segments; empty/missing/nonexistent, file, drive-relative, root-relative, and disallowed paths rejected |
+| `cli-help-and-invalid-real-processes` | Actual EXE processes: help without request/dialog, stdout and code 0; invalid invocations/directories with code 5, short stderr diagnosis, no echoed test markers |
+| `cli-help-while-busy` | Help and invalid invocations work without acquiring the request mutex even while it is held |
+| `cli-console-subsystem` | Actual built apphost is `WINDOWS_CUI`, not `WINDOWS_GUI` |
+| `cli-no-arguments-picker-cancel` | Actual EXE launched without arguments or console window; its own file picker found and closed; code 2 and empty standard channels |
+| `cli-direct-default-cwd-roundtrip` | Actual direct request without file; caller CWD differs from installation directory; complete preview, explicit synthetic approval, target CWD/environment/arguments check, code 0 |
+| `cli-direct-absolute-cwd-roundtrip` | Same complete workflow with explicit absolute working directory |
+| `cli-direct-relative-cwd-roundtrip` | Same complete workflow with relative `.` resolved against caller CWD |
+| `cli-direct-parent-killed-tree` | Direct launcher bound to synthetic caller; forcible nonrecursive caller termination leads to code 2 and confirmed target/grandchild termination |
+| `cli-powershell-help-errors-wait-exits` | Actual PowerShell process: EXE help/code 0, CLI error/code 5, waiting before approval and until result dismissal; success/code 0, target failure/code 7, cancellation/code 2 reach the shell |
+| `cli-cmd-help-errors-wait-exits` | Same five real process workflows through cmd, checking help, stderr, waiting, and `%ERRORLEVEL%` |
+
+The three direct round-trip groups check empty arguments, spaces, embedded quotes, backslashes, Unicode, metacharacters, and `--help`, `--secret`, `--request`, `--working-directory`, `--watch-parent`, and `--` **after** the separator. All reach the local target unchanged and are not treated as launcher options. The complete argument matrix uses `ProcessStartInfo.ArgumentList`. Shell groups check ordinary quoted metadata and lifecycle; they do not establish all cmd/PowerShell quoting variants. Windows PowerShell 5.1 and its legacy quoting are not verified by this run.
+
+The same successful run includes earlier regressions: JSON/file mode, minimal environment and credential exclusion, independently captured output suppression with a negative control, startup/runtime cancellation, timeout, launcher crash, target/grandchild cleanup, UI errors, mutex, caller handles/PID reuse, and forcible termination of the actual JSON wrapper. The production EXE has no auto-approval/autofill switch. Synthetic values are written by test helpers only into masked fields of owned test windows, never CLI/JSON/logs.
+
+After a successful build, run the full suite in a context permitting Windows metadata queries:
+
+```powershell
+$previousShell = $env:SHANDOFF_TEST_POWERSHELL
+try {
+    $env:SHANDOFF_TEST_POWERSHELL = (Get-Process -Id $PID).Path
+    & '.\tests\SecretHandoff.Tests\bin\Debug\net10.0-windows\SecretHandoff.Tests.exe'
+    # Optional: run only the 13 new groups with the same EXE and --cli-tests.
+} finally { $env:SHANDOFF_TEST_POWERSHELL = $previousShell }
+```
+
+**Outstanding evidence:** the actual Codex Desktop cancel button, manual clipboard/keyboard/DPI interaction, Explorer double-click on different Windows versions, Windows before 24H2, Windows PowerShell 5.1, a native CRT target, and the other MVP variants below. Explicit local approval is still required. Merely ending an agent wait while the launcher and bound process remain alive does not cancel the task. During the CLI implementation task, installers, CI/CD, PATH integration, and release packages were not changed, rebuilt, or published; earlier package reports below are historical evidence. Subsequent repository-readiness changes are documented separately in [OPEN-SOURCE-READINESS.md](OPEN-SOURCE-READINESS.md).
+
+## Reproduction
+
+### Installer and release build evidence
+
+Additional checks on October 28: development rebuild with 0 warnings/errors and all 47 then-existing synthetic groups passing outside the sandbox. A self-contained `win-x64` package version `0.1.0-rc.1` was built locally with official .NET runtime packages; Inno Setup produced the per-user installer. `Test-Package.ps1` reported `PACKAGE_SMOKE_PASSED`. `Test-Installer.ps1` installed into a fresh project test directory, checked the installed EXE, reinstalled, and uninstalled successfully (`INSTALLER_ROUNDTRIP_PASSED`). No execution policy was changed and no real secrets were used. An initial sandbox run failed because metadata queries were blocked; the path policy was not relaxed.
+
+This checks package contents, startup/error status of the packaged EXE, silent installation, same-version reinstallation, and uninstallation. Upgrading an older published version, the manual installer UI, and a system without any preinstalled .NET have not yet been practically checked. SHA-256 checksums demonstrate integrity against a known comparison value, not publisher identity; packages are unsigned. Build/release instructions: [RELEASING.md](RELEASING.md).
+
+The bundled runtime was subsequently pinned independently of the development SDK to **10.0.14**. Local rebuild, both framework-version checks, install/reinstall/uninstall, and SHA-256 file verification passed. The [GitHub Actions run](https://github.com/JustUndef/secret-handoff/actions/runs/40711889604) for commit `43fbe42` passed on `windows-2025`: synthetic integration tests, self-contained packaging, runtime/EXE verification, installer round trip, and artifact upload. Publishing was skipped as intended for this manual run. An actual tag push publishing a GitHub release was not performed; that final path remains practically untested until an intended version tag is pushed. Later isolated PATH-test evidence is in [INSTALLER-TESTING.md](INSTALLER-TESTING.md).
+
+From PowerShell in the project directory:
 
 ```powershell
 .\scripts\Build-Prototype.ps1
 ```
 
-Das Skript wählt `C:\Users\<Benutzer>\.dotnet\dotnet.exe` mit SDK 10.0.203, baut die Lösung, erzeugt die Demo und führt den Test-Runner aus. Keine externen NuGet-Pakete; die Paketquellen sind für dieses Projekt geleert. SDK-Telemetrie, Entwicklungszertifikat-Erzeugung und globale Tool-PATH-Ergänzung sind im Build-Skript deaktiviert; dessen temporäre Prozessvariablen werden danach wiederhergestellt. Wegen Beschränkungen dieser Ausführungsumgebung werden Workload-Auflösung und der persistente Compiler-Server beim Build nicht verwendet. Keine Systemrichtlinien ändern.
+The script builds the solution, generates the demo, and executes the custom test runner. It accepts `-DotnetPath`; otherwise it looks for an SDK under the user profile, then on PATH. `global.json` selects the SDK version. No external NuGet packages are used; package sources are cleared for prototype builds. SDK telemetry, development certificate generation, and global tool PATH additions are disabled in the script; temporary process variables are restored afterward. Workload resolution and the persistent compiler server are disabled because of execution-environment restrictions. Do not change system policies. Clean-checkout prerequisites are listed in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Ausgeführt unter Windows 11 x64 (Build 26300), SDK 10.0.203. Der erfolgreiche letzte Build am 28. Oktober meldete **0 Warnungen, 0 Fehler**. Der anschließend außerhalb der Codex-Sandbox ausgeführte Test-Runner meldete **47 PASS und `ALL_TESTS_PASSED`**. Wertfreies Ergebnisprotokoll der Review-Nachbesserungen: `artifacts/review-build-and-test.txt`. Das ältere `artifacts/build-and-test.txt` dokumentiert den vorherigen Stand mit 32 Testgruppen.
+Before the CLI extension, checks on Windows 11 x64 (build 26300), SDK 10.0.203 produced **0 warnings, 0 errors**, followed outside the Codex sandbox by **47 PASS and `ALL_TESTS_PASSED`**. Value-free result log for the review fixes: `artifacts/review-build-and-test.txt`. The older `artifacts/build-and-test.txt` records the previous 32-group state. The 60-group CLI run is described above. These generated local artifacts are intentionally not committed; the reproducible commands, source tests, and evidence summaries are public.
 
-Der erste integrierte Testlauf innerhalb der Sandbox scheiterte: `QueryDosDeviceW` wurde mit `ERROR_ACCESS_DENIED` blockiert und die neue Pfadpolicy wies die Aufträge ab. Eine gezielte lokale Prüfung außerhalb der Sandbox bestätigte ein direkt abgebildetes lokales Laufwerk. Danach wurde derselbe gebaute Test-Runner mit dem aktuellen PowerShell-Pfad in `SHANDOFF_TEST_POWERSHELL` vollständig außerhalb der Sandbox ausgeführt; die temporäre Prozessvariable wurde anschließend wiederhergestellt. Die Policy wurde dafür nicht gelockert. Reproduktion benötigt einen Ausführungskontext, der die lokalen Windows-Metadatenabfragen zulässt; es wurden keine Systemrichtlinien geändert.
+The first integrated sandbox run failed: `QueryDosDeviceW` was blocked with `ERROR_ACCESS_DENIED`, and the new path policy rejected requests. A targeted local check outside the sandbox confirmed a directly mapped local drive. The same built runner then ran fully outside the sandbox with the current PowerShell path in `SHANDOFF_TEST_POWERSHELL`; the temporary process variable was restored afterward. The policy was not relaxed. Reproduction requires a context permitting local Windows metadata queries; no system policies were changed.
 
-Die Demo unter `artifacts/demo` ist derzeit frameworkabhängig, keine selbstenthaltende Veröffentlichung. Die erzeugte JSON-Datei enthält absolute Metadatenpfade und keine Secret-Werte. Das Beispiel nach einem Umzug des Ordners neu erzeugen.
+The generated demo under `artifacts/demo` is framework-dependent, not a self-contained release. Its JSON contains absolute metadata paths and no secret values. Regenerate it after moving the directory.
 
-## Ausgeführte Tests
+## Executed regression tests
 
-| Testgruppe | Beleg |
+| Test group | Evidence |
 | --- | --- |
-| `request-contract` | JSON-Snapshot, doppelte/unbekannte Schlüssel, ungültiges Format und Übergröße, mehrere gefährliche Namen, Zeichen- und Wertregeln |
-| `local-path-native-valid` | Echte lokale Probe- und Auftragsdatei, kanonische Pfade und Verzeichnis-Endslash akzeptiert |
-| `local-path-reject-drive-before-attributes` | Simulierte Remote-/Unknown-/fehlende Laufwerke vor jedem Attribut- oder Inhaltszugriff abgewiesen |
-| `local-path-syntax-before-probe` | UNC, Gerätepfade/-namen, Datenströme und mehrdeutige Namen vor Windows-Abfragen abgewiesen; Slash- und Punktsegment-Normalisierung |
-| `local-path-components-and-types` | Simulierte Reparse Points an Wurzel, Zwischenkomponente und Datei stoppen die Prüfung vor weiteren Komponenten; Dateitypen geprüft |
-| `local-path-loader-checks-all-paths` | Auftragsdatei, Ziel und Arbeitsverzeichnis unterliegen der Policy; keine Attributabfrage des simulierten Netzlaufwerks |
-| `local-path-post-preview-revalidation` | Simulierter Laufwerkswechsel nach Vorschau führt ohne Start zu Kategorie 5; Werte geleert, Auftragsdatei nicht neu gelesen |
-| `local-path-immediate-prestart-revalidation` | Simulierter Laufwerks-/Reparse-Wechsel zwischen erster Runnerprüfung und CreateProcess verhindert die Prozesserzeugung |
-| `environment-and-arguments` | Zwei synthetische Werte exakt einschließlich Unicode/Rand-Leerzeichen; Zielumgebung enthält genau die drei Basisnamen und zwei angeforderte Namen; .NET-argv-Roundtrip mit leeren Argumenten, Quotes, Backslashes und Shell-Sonderzeichen; Arbeitsverzeichnis |
-| `pre-cancel-no-start` | Bereits abgebrochener Auftrag erzeugt keinen Startmarker; Wert-Dictionary wird geleert |
-| `cancel-during-suspended-start` | Abbruch nach Erzeugung des suspendierten Prozesses, vor Ausführung: bereinigt, kein Zielcode/Marker |
-| `invalid-values-no-start` | Leer, Zeilenumbruch, NUL und Überlänge abgewiesen |
-| `target-failure` | Zielcode 37 wird lokal als Zahl erfasst und zu Launcher-Kategorie 7 abgebildet |
-| `stdout-stderr-flood-discarded` | Echter Runner in separatem Testhost; synthetische Werte, 32 MiB Ausgabe und Binärbytes erzeugen außen exakt null Bytes in beiden Kanälen; feste Drainpuffer und Zeitlimits |
-| `stdout-stderr-detector-negative-control` | Derselbe Detektor erkennt absichtlich erzeugte vier synthetische Binärbytes je Kanal; keine Rohdaten in Testausgabe oder Dateien |
-| `normal-end-kills-descendants` | Zielende beendet verbliebenen Enkel; bekannte Test-PIDs danach beendet |
-| `cancel-kills-tree` | Laufender Auftrag samt Kind/Enkel nach Cancellation beendet |
-| `timeout-kills-tree` | Verkürztes Testlimit von 2 Sekunden beendet den gesamten betreuten Baum |
-| `host-crash-kills-tree` | Abruptes Töten des Runner-Hosts beendet Ziel und Enkel durch Job-Handle-Schließung |
-| `host-crash-before-resume` | Abruptes Töten vor Resume hinterlässt keinen suspendierten Zielprozess |
-| `cleanup-failure-status` | Synthetische Statusinjektion: Kategorie 9 überschreibt das Ergebnis; tatsächliche Kernel-Beendigungsfehler wurden nicht provoziert |
-| `start-failure` | Ungültiges EXE und fehlender Zielpfad liefern feste Kategorien |
-| `input-paste-and-masking` | Separate Test-Zwischenablage: beide Einfügepfade, Auswahlersatz, Rand-Leerzeichen, Überlänge, gesperrtes Clipboard, Wiederholung, Maskierung und Enter-Sperre |
-| `form-empty-cancel-and-timeout` | Leere Eingaben starten nicht; Abbrechen und sofortiger injizierter Freigabe-Timeout verwerfen Werte |
-| `form-explicit-once-and-clear` | Einfügeknöpfe, expliziter Start, doppelter Startversuch führt nur zu einem Runner-Aufruf; Felder und Dictionary geleert |
-| `form-close-cancels-running` | Fenster bleibt während Bereinigung bestehen und schließt nach bestätigtem Abbruch |
-| `ui-loop-failure-before-approval` | Ausnahme in echter Application.Run-Schleife vor Freigabe: kein Runnerstart, Fehlerbericht erst nach Dispose |
-| `ui-loop-failure-cleans-before-report` | Tatsächliche UI-Ausnahme bei lebendem Ziel und Enkel; beide sind bereits vor dem Fehlerbericht beendet |
-| `ui-loop-failure-cleanup-status-priority` | Derselbe UI-Fehlerpfad mit synthetischer Cleanup-Statusinjektion; Kategorie 9 bleibt auch bei fehlschlagender Fehleranzeige erhalten |
-| `form-dispose-joins-independent-cleanup` | Dispose während laufendem Baum ohne UI-Pump; kontextfreie Runner-Bereinigung bestätigt und Eingaben geleert |
-| `form-dispose-cleanup-status-priority` | Kategorie 9 bleibt nach Dispose und einer später abgearbeiteten UI-Fortsetzung erhalten |
-| `gui-single-instance` | Tatsächlich gestartete zweite GUI-EXE liefert Kategorie 4 ohne Dialog |
-| `gui-process-roundtrip` | Produktions-GUI-EXE separat gestartet, nur durch Testcode mit synthetischen Werten bedient, Start/Ergebnis/Schließen; Exit 0 und leere Launcher-Standardkanäle |
-| `powershell-wrapper-roundtrip` | Zentraler Aufruf über die von Codex verwendete PowerShell-Laufzeit, GUI-Durchlauf, ausschließlich fester Ergebnisstatus des Skripts |
-| `wrapper-busy-preserves-other-instance` | Kontrolliert geöffnete erste Instanz bleibt leer, ungestartet und aktiv; zweiter Wrapper erhält BUSY; alter PID-only-Driver verweigert Bedienung |
-| `wrapper-ownership-rejects-other-and-exited-owner` | Gleicher EXE-Pfad und passende Zeitordnung reichen ohne tatsächliche Elternbeziehung nicht aus; beendete Owner/Kandidaten werden abgewiesen |
-| `parent-options-validation` | Gebundene/ungebundene CLI-Aufrufe, fehlende Parameter, Null/negative/überlaufende IDs und Zeitstempel, eigene PID abgewiesen |
-| `parent-handle-lifetime` | Mit Startzeit gebundener Prozesshandle löst nach hartem Ende des synthetischen Aufrufers Abbruchsignal aus |
-| `parent-binding-mismatch-no-start` | Abweichende Erzeugungszeit führt ohne Dialog/Zielstart zu Kategorie 5 |
-| `parent-already-ended-no-start` | Vor dem Launcherstart beendeter Aufrufer führt ohne Zielstart zu Kategorie 2 |
-| `parent-killed-awaiting-approval` | Eingaben in normaler gebundener GUI, keine Freigabe; hartes Aufruferende schließt Launcher ohne Zielstart |
-| `parent-killed-running-tree` | Nur synthetischen Aufrufer hart beenden; GUI meldet Kategorie 2, Ziel und Enkel binnen 5 Sekunden beendet |
-| `parent-ended-before-form-shown` | Bereits gesetztes Aufrufer-Abbruchsignal schließt auch bei noch nicht vorhandenem Fensterhandle ohne Runner-Aufruf |
-| `parent-cancels-without-ui-pump` | UI-Nachrichtenverarbeitung absichtlich aussetzen; Zielbaum wird trotzdem beendet; danach UI-Abschluss und Kategorie 2 |
-| `powershell-wrapper-hard-kill` | Tatsächliches zentrales Skript mit synthetischem Baum; PowerShell per nicht rekursivem `Kill()` ohne `finally` beenden; Launcher, Ziel und Enkel binnen 5 Sekunden beendet |
-| `parent-watch-disposal` | Zwölf Überwachungen bei weiterlebendem Aufrufer anlegen/freigeben; kein Handle-Wachstum oberhalb der kleinen Toleranz |
-| `repeated-launch-handle-lifetime` | Zwölf weitere Starts ohne wachsenden Handle-Bestand über die festgelegte kleine Toleranz |
+| `request-contract` | JSON snapshot, duplicate/unknown keys, invalid format and oversized files, dangerous names, character/value rules |
+| `local-path-native-valid` | Actual local probe/request files, canonical paths, trailing directory slash accepted |
+| `local-path-reject-drive-before-attributes` | Simulated remote/unknown/missing drives rejected before attribute/content access |
+| `local-path-syntax-before-probe` | UNC, device paths/names, streams, ambiguous names rejected before Windows queries; slash/dot-segment normalization |
+| `local-path-components-and-types` | Simulated reparse points at root/intermediate/file stop validation before further components; file types checked |
+| `local-path-loader-checks-all-paths` | Policy applies to request, target, and working directory; no attribute query on simulated network drive |
+| `local-path-post-preview-revalidation` | Simulated drive change after preview produces category 5 without launch; values cleared, request not reread |
+| `local-path-immediate-prestart-revalidation` | Simulated drive/reparse change between initial runner validation and CreateProcess prevents creation |
+| `environment-and-arguments` | Two exact synthetic values including Unicode/edge spaces; exactly three base names plus two requested names; .NET argv round trip with empty values, quotes, backslashes, shell metacharacters; working directory |
+| `pre-cancel-no-start` | Already-cancelled request creates no marker; value dictionary cleared |
+| `cancel-during-suspended-start` | Cancellation after suspended creation but before execution cleans up; no target code/marker |
+| `invalid-values-no-start` | Empty, line break, NUL, and oversized values rejected |
+| `target-failure` | Target code 37 captured locally as a number and mapped to launcher category 7 |
+| `stdout-stderr-flood-discarded` | Actual runner in separate host; synthetic values, 32 MiB output, and binary bytes produce exactly zero bytes externally on both channels; fixed drain buffers and timeouts |
+| `stdout-stderr-detector-negative-control` | Same detector recognizes four intentionally produced synthetic binary bytes per channel; no raw data in test output/files |
+| `normal-end-kills-descendants` | Target exit terminates remaining grandchild; known test PIDs terminated afterward |
+| `cancel-kills-tree` | Cancellation terminates running task and child/grandchild |
+| `timeout-kills-tree` | Shortened 2-second test timeout terminates the entire managed tree |
+| `host-crash-kills-tree` | Abrupt runner-host termination ends target/grandchild through job-handle closure |
+| `host-crash-before-resume` | Abrupt termination before resume leaves no suspended target |
+| `cleanup-failure-status` | Synthetic status injection: category 9 overrides result; actual kernel termination failures were not induced |
+| `start-failure` | Invalid EXE and missing target path produce fixed categories |
+| `input-paste-and-masking` | Separate test clipboard: both paste paths, selection replacement, edge spaces, oversized input, locked clipboard, retry, masking, Enter prevention |
+| `form-empty-cancel-and-timeout` | Empty input does not launch; Cancel and immediate injected approval timeout discard values |
+| `form-explicit-once-and-clear` | Paste buttons, explicit launch, double launch attempt invokes runner once; fields/dictionary cleared |
+| `form-close-cancels-running` | Window remains during cleanup and closes after confirmed cancellation |
+| `ui-loop-failure-before-approval` | Actual Application.Run exception before approval: no runner launch; report only after Dispose |
+| `ui-loop-failure-cleans-before-report` | Actual UI exception with live target/grandchild; both terminated before reporting |
+| `ui-loop-failure-cleanup-status-priority` | Same UI failure with synthetic cleanup-status injection; category 9 survives failed error reporting |
+| `form-dispose-joins-independent-cleanup` | Dispose during live tree without UI pump; context-independent cleanup confirmed, inputs cleared |
+| `form-dispose-cleanup-status-priority` | Category 9 survives Dispose and subsequently processed UI continuation |
+| `gui-single-instance` | Actual second GUI EXE returns category 4 without dialog |
+| `gui-process-roundtrip` | Production GUI launched separately, operated only by synthetic test code; launch/result/close, exit 0, empty launcher standard channels |
+| `powershell-wrapper-roundtrip` | Shared wrapper through Codex's PowerShell runtime; GUI round trip; only fixed wrapper status |
+| `wrapper-busy-preserves-other-instance` | Controlled first instance stays empty, unstarted, active; second wrapper gets BUSY; old PID-only driver refuses interaction |
+| `wrapper-ownership-rejects-other-and-exited-owner` | Same EXE path and creation-time ordering are insufficient without actual parent relationship; terminated owners/candidates rejected |
+| `parent-options-validation` | Bound/unbound CLI, missing parameters, zero/negative/overflowed IDs/timestamps, own PID rejected |
+| `parent-handle-lifetime` | Creation-time-bound handle triggers cancellation after forcibly terminating synthetic caller |
+| `parent-binding-mismatch-no-start` | Mismatched creation time produces category 5 without dialog/target |
+| `parent-already-ended-no-start` | Caller terminated before launcher start produces category 2 without target |
+| `parent-killed-awaiting-approval` | Values entered in normal bound GUI without approval; forcible caller termination closes launcher without target |
+| `parent-killed-running-tree` | Forcibly terminate only synthetic caller; GUI returns category 2; target/grandchild end within 5 seconds |
+| `parent-ended-before-form-shown` | Already-set caller cancellation closes before window-handle creation without runner invocation |
+| `parent-cancels-without-ui-pump` | Intentionally suspend UI message processing; target tree still terminates; subsequent UI completion/category 2 |
+| `powershell-wrapper-hard-kill` | Actual wrapper with synthetic tree; nonrecursive PowerShell Kill() without finally; launcher/target/grandchild end within 5 seconds |
+| `parent-watch-disposal` | Create/dispose twelve watches while caller lives; no handle growth above small tolerance |
+| `repeated-launch-handle-lifetime` | Twelve more launches without handle growth beyond small tolerance |
 
-Der PowerShell-Host dieser Sandbox gibt beim Start teilweise eine feste `InitializeDefaultDrives`-Diagnose aus. Nur diese genaue bekannte Hostmeldung wird im Wrapper-Test separat toleriert; keine beliebigen Zielausgaben werden bereinigt oder freigegeben. Windows PowerShell 5.1 scheiterte hier an der AuthorizationManager-Prüfung vor Ausführung des Skripts; dieser Host ist in dieser Umgebung nicht nachgewiesen. Es wurde keine Ausführungsrichtlinie geändert.
+The sandbox's PowerShell host sometimes emits a fixed `InitializeDefaultDrives` startup diagnostic. Only that exact known host message is separately tolerated in the wrapper test; arbitrary target output is not sanitized or allowed. Windows PowerShell 5.1 failed its AuthorizationManager check before script execution in this environment and is not verified here. No execution policy was changed.
 
-Der Dialog wurde zusätzlich ohne eingetragene Werte mittels `DrawToBitmap` gerendert und visuell geprüft (`artifacts/preview.png`). Das ist eine Layoutprüfung des eigenen Fensters, kein Screenshot persönlicher Desktop-Inhalte und kein Ersatz für manuelle Tastatur-/Clipboard-Bedienung.
+The dialog was also rendered without entered values using `DrawToBitmap` and visually inspected (`artifacts/preview.png`). This checks the application's layout, not personal desktop content, and does not replace manual keyboard/clipboard interaction testing.
 
-## Separater Codex-Werkzeug-Abbruchtest vom 27. Oktober
+## Separate Codex tool cancellation check on October 27
 
-Aus einem Codex-Werkzeugprozess mit PTY wurde der Testmodus `--tool-cancel-test` des **Test-Runners** gestartet. Dieser startete das zentrale Aufrufskript, die normale GUI-EXE sowie einen synthetischen Zielprozess mit Enkel. Die Testautomatisierung erteilte ausschließlich für diesen synthetischen Auftrag die Startfreigabe; die produktive EXE hat keinen Autofill-/Autoapprove-Testschalter.
+The **test runner's** `--tool-cancel-test` mode was started from a Codex tool process with a PTY. It started the shared wrapper, normal GUI EXE, and a synthetic target with a grandchild. Automation approved only that synthetic request; the production EXE has no autofill/auto-approval test switch.
 
-Nach `TOOL_CANCEL_READY` wurde über den Werkzeugkanal Strg+C gesendet. Anschließend wurden die zuvor gespeicherten numerischen Test-PIDs geprüft: Aufrufskript, Launcher, Ziel und Enkel waren beendet. Ergebnis: **`TOOL_CTRL_C_CLEANUP_OK`**. Metadaten/Ergebnis stehen unter `artifacts/tool-cancel-state.json` und `artifacts/tool-cancel-result.txt`; darin keine Secret-Werte.
+After `TOOL_CANCEL_READY`, Ctrl+C was sent through the tool channel. Previously saved numeric test PIDs were then checked: wrapper, launcher, target, and grandchild had terminated. Result: **`TOOL_CTRL_C_CLEANUP_OK`**. Metadata/results are in `artifacts/tool-cancel-state.json` and `artifacts/tool-cancel-result.txt`; neither contains secret values.
 
-Zur gezielten Wiederholung (nicht Teil des regulären Testlaufs):
+For a focused repeat, outside the regular suite:
 
 ```powershell
-$env:SHANDOFF_TEST_POWERSHELL = (Get-Process -Id $PID).Path
-.\tests\SecretHandoff.Tests\bin\Debug\net10.0-windows\SecretHandoff.Tests.exe --tool-cancel-test
-# Erst nach TOOL_CANCEL_READY Strg+C senden, anschließend die gespeicherten Test-PIDs prüfen.
+$previousShell = $env:SHANDOFF_TEST_POWERSHELL
+try {
+    $env:SHANDOFF_TEST_POWERSHELL = (Get-Process -Id $PID).Path
+    .\tests\SecretHandoff.Tests\bin\Debug\net10.0-windows\SecretHandoff.Tests.exe --tool-cancel-test
+    # Send Ctrl+C only after TOOL_CANCEL_READY, then check the saved test PIDs.
+} finally { $env:SHANDOFF_TEST_POWERSHELL = $previousShell }
 ```
 
-Am 28. Oktober wurde diese frühere `finally`-Abhängigkeit durch eine Überwachung des gebundenen Aufrufers ergänzt. Das zentrale Skript übergibt seine PID und Windows-Erzeugungszeit; der Launcher überprüft und hält den konkreten Prozesshandle. Die obigen zehn neuen Testgruppen belegen den Abbruch bei hartem Aufruferende, einschließlich des tatsächlichen PowerShell-Skripts. Der Wiederholungstest erfasste zunächst zusätzliche Handles durch eigens angelegte Überwachungsthreads; die Umsetzung verwendet nun einen freigegebenen Hintergrundtask und besteht den Handle-Test.
+On October 28, monitoring of the bound caller supplemented the earlier dependency on `finally`. The wrapper passes its PID and Windows creation time; the launcher verifies and retains that exact process handle. The ten caller-monitoring groups above establish cancellation after forcible caller termination, including the actual PowerShell wrapper. Initial repeated-watch testing found additional handles from dedicated monitoring threads; the implementation now uses a released background task and passes the handle check.
 
-**Weiterhin nicht nachgewiesen:** der tatsächliche Abbruchknopf der Codex-Desktop-App und andere Host-/Terminal-Versionen. Der Launcher erkennt das Ende des gebundenen Prozesses. Falls Codex bei einem Auftragsabbruch den Launcher und diesen Prozess weiterleben lässt, wird allein das Ende des Chats/Auftrags nicht erkannt. Die manuellen Aufrufe ohne `--watch-parent` sind absichtlich nicht gebunden. Der harte Prozessabbruch-Test ersetzt keine vollständige Desktop-Integration und keine Sicherheitsisolation.
+**Still unverified:** the actual Codex Desktop cancel button and other host/terminal versions. The launcher detects termination of the bound process. If Codex leaves both that process and launcher alive on task cancellation, ending the chat/task alone is not detected. Manual invocations without `--watch-parent` are intentionally unbound. Forcible process termination is not complete desktop integration or security isolation.
 
-## Verhältnis zu den MVP-Kriterien
+## Relationship to MVP criteria
 
-Die 47 Testgruppen sind nicht mit den 16 umfassenderen Abnahmekriterien gleichzusetzen. Für A02/A06 ist der .NET-Roundtrip nachgewiesen; ein separates natives CRT-Prüfprogramm fehlt. A03/A04/A07/A08/A09/A11/A13 werden durch mehrere konkrete Fälle abgedeckt, jedoch noch nicht in allen vorgesehenen Varianten. A10 ist für die Standardkanäle durch einen getrennten Testhost mit Null-Byte-Prüfung und Detektor-Negativkontrolle geprüft. A12 ist zusätzlich für hartes Aufruferende sowie UI-Ausnahme/Dispose bei laufendem Baum geprüft, bleibt wegen des echten Desktop-Abbruchs und der noch nicht in Echtzeit durchlaufenen 5-/15-Minuten-Fristen teilweise offen. A14 hat den Metadaten-Snapshot-Test und simulierte Pfadänderungen vor Start; eine gezielte Matrix verschachtelter/inkompatibler Jobs fehlt. A15 prüft Statuspriorität, keinen echten Kernel-Ausfall. Für A16 liegt Codeprüfung vor, noch keine vollständige Beobachtung von Dateischreibzugriffen über alle Pfade.
+The 60 test groups (47 earlier plus 13 CLI groups) are not equivalent to the 16 broader acceptance criteria. A02/A06 have .NET round-trip evidence; a separate native CRT probe is missing. A03/A04/A07/A08/A09/A11/A13 have several concrete cases but not every planned variant. A10 checks standard channels using a separate host, zero-byte assertions, and a detector negative control. A12 additionally covers forcible caller termination and UI exception/Dispose with a live tree, but remains incomplete because actual desktop cancellation and full real-time 5-/15-minute limits have not been checked. A14 includes metadata snapshots and simulated prelaunch path changes; a targeted compatible/incompatible nested-job matrix is missing. A15 checks status precedence, not actual kernel failure. A16 has code review but no complete observation of file writes across all paths.
 
-Die Testautomatisierung ordnet Wrapper-Kinder über gehaltene Prozesshandles, Erzeugungszeit, tatsächliche Eltern-PID und EXE-Pfad zu. Vor schreibenden GUI-Nachrichten wird zusätzlich der Fensterbesitz geprüft. Der bisherige PID-only-Modus `--drive-synthetic-gui` ist deaktiviert; die Produkt-EXE hat weiterhin keinen Autofreigabeschalter. Die Pfadtests verwenden echte lokale Dateien für den Positivfall; Netzlaufwerke, Reparse Points und Pfadänderungen werden instanzgebunden simuliert. Echte Junction-/SUBST-Integrationstests und konkurrierende Dateimanipulation wurden nicht ausgeführt. Die Ausgabetests erfassen keine anderen Ausgabekanäle des Zielprogramms und sind kein Isolationsnachweis.
+Automation identifies wrapper children through held process handles, creation time, actual parent PID, and EXE path. Window ownership is checked before mutating GUI messages. The previous PID-only `--drive-synthetic-gui` mode is disabled; the product EXE still has no automatic approval switch. Path tests use actual local files for positive cases; network drives, reparse points, and path changes are simulated per instance. Actual junction/SUBST integration tests and concurrent file manipulation have not run. Output tests do not capture other target output channels and do not establish isolation.
 
-Nächste konkrete Prüfungen:
+Next concrete checks:
 
-1. Manueller Demo-Durchlauf mit echten Windows-Einfügewegen, Escape, Fensterschließen, langen Angaben und mehreren DPI-Einstellungen; ausschließlich öffentliche synthetische Werte verwenden.
-2. Echten Codex-Desktop-Abbruch mit synthetischem Baum prüfen. Bei fehlender zuverlässiger Beendigung den Aufrufervertrag technisch ergänzen, bevor dieser Startweg als unterstützt gilt.
-3. Offene Varianten der Abnahmekriterien ergänzen, danach ein selbstenthaltendes lokales Paket bauen und dessen Runtime-Pflege festlegen.
+1. Manually run the demo with real Windows paste paths, Escape, window closing, long metadata, and multiple DPI settings, using public synthetic values only.
+2. Test actual Codex Desktop cancellation with a synthetic tree. If termination is unreliable, extend the caller contract technically before claiming that launch path is supported.
+3. Complete outstanding acceptance variants, then rebuild self-contained packages and verify runtime maintenance and clean-system behavior.
 
-Private Projekte, Passwortmanager, echte Tokens und Kontozugriffe werden für diese Schritte nicht benötigt.
+Private projects, password managers, real tokens, and account access are not needed for these steps.

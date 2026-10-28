@@ -33,11 +33,9 @@ SetupLogging=no
 ChangesEnvironment=yes
 
 [Languages]
-Name: "german"; MessagesFile: "compiler:Languages\German.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [CustomMessages]
-german.AddUserPath=Secret Handoff zum Benutzer-PATH hinzufügen (neue Terminals)
 english.AddUserPath=Add Secret Handoff to the user PATH (new terminals)
 
 [Tasks]
@@ -48,6 +46,6 @@ Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 
 [Icons]
 Name: "{group}\Secret Handoff"; Filename: "{app}\SecretHandoff.exe"
-Name: "{group}\Anleitung"; Filename: "{app}\README.md"
+Name: "{group}\Documentation"; Filename: "{app}\README.md"
 
 #include "UserPath.iss"

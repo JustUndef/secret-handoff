@@ -21,6 +21,7 @@ public sealed record LaunchRequest(string SourcePath, string Executable,
             WindowsArguments.Encode(Executable, Arguments).Length >= 32767 ||
             Secrets.Length is < 1 or > 16 ||
             Secrets.Any(s => !EnvironmentPolicy.AllowedName(s.Name)) ||
+            Secrets.Any(s => s.Description.Length > 512 || RequestLoader.UnsafeDisplay(s.Description)) ||
             Secrets.Select(s => s.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count() != Secrets.Length)
             throw new RequestException();
     }
@@ -28,6 +29,17 @@ public sealed record LaunchRequest(string SourcePath, string Executable,
 
 public static class RequestLoader
 {
+    // Both entry points produce the same canonical, immutable metadata snapshot.
+    public static LaunchRequest Create(string executable, IEnumerable<string> arguments,
+        string workingDirectory, IEnumerable<SecretSpec> secrets)
+    {
+        var paths = LocalPathPolicy.Native;
+        var request = new LaunchRequest("(Direct invocation)", paths.File(executable), arguments.ToImmutableArray(),
+            paths.Directory(workingDirectory), secrets.ToImmutableArray());
+        request.Revalidate(paths);
+        return request;
+    }
+
     public static LaunchRequest Load(string path) => Load(path, LocalPathPolicy.Native);
 
     internal static LaunchRequest Load(string path, LocalPathPolicy paths)
@@ -52,7 +64,6 @@ public static class RequestLoader
                 ExactKeys(s, "name", "description");
                 var name = Text(s.GetProperty("name"));
                 var description = Text(s.GetProperty("description"));
-                if (description.Length > 512 || UnsafeDisplay(description)) throw new RequestException();
                 return new SecretSpec(name, description);
             }).ToImmutableArray();
             var request = new LaunchRequest(path, executable, args, directory, secrets);
