@@ -7,6 +7,14 @@ if (Test-Path -LiteralPath $uninstallKey) { throw 'INSTALLER_TEST_EXISTING_INSTA
 $root = Split-Path -Parent $PSScriptRoot
 $target = Join-Path $root ('artifacts\installer-tests\' + [Guid]::NewGuid().ToString('N'))
 function Run-InstallerProcess([string]$File, [string]$Arguments) {
+    if ([IO.Path]::GetFileName($File) -eq 'unins000.exe') {
+        # Inno delegates uninstallation to a temporary process; await the whole process tree.
+        $uninstall = Start-Process -FilePath $File -ArgumentList $Arguments -PassThru -Wait -WindowStyle Hidden
+        try {
+            if ($uninstall.ExitCode -ne 0) { throw 'INSTALLER_TEST_EXIT_FAILED' }
+        } finally { $uninstall.Dispose() }
+        return
+    }
     $info = [Diagnostics.ProcessStartInfo]::new()
     $info.FileName = $File
     $info.Arguments = $Arguments

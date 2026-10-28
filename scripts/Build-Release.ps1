@@ -48,7 +48,7 @@ try {
         "-p:RuntimeFrameworkVersion=$runtimeVersion" `
         -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -p:UseSharedCompilation=false -m:1 -nr:false -v quiet
     if ($LASTEXITCODE -ne 0) { throw 'RELEASE_PUBLISH_FAILED' }
-    foreach ($file in @('README.md', 'ARCHITECTURE.md', 'TESTING.md', 'RELEASING.md', 'LICENSE')) {
+    foreach ($file in @('README.md', 'ARCHITECTURE.md', 'TESTING.md', 'RELEASING.md', 'INSTALLER-TESTING.md', 'LICENSE')) {
         Copy-Item -LiteralPath (Join-Path $root $file) -Destination $publish
     }
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Invoke-Handoff.ps1') -Destination $publish

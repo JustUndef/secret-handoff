@@ -30,10 +30,18 @@ UninstallDisplayIcon={app}\SecretHandoff.exe
 CloseApplications=yes
 RestartApplications=no
 SetupLogging=no
+ChangesEnvironment=yes
 
 [Languages]
 Name: "german"; MessagesFile: "compiler:Languages\German.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
+
+[CustomMessages]
+german.AddUserPath=Secret Handoff zum Benutzer-PATH hinzufügen (neue Terminals)
+english.AddUserPath=Add Secret Handoff to the user PATH (new terminals)
+
+[Tasks]
+Name: "userpath"; Description: "{cm:AddUserPath}"; Flags: unchecked
 
 [Files]
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -41,3 +49,5 @@ Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 [Icons]
 Name: "{group}\Secret Handoff"; Filename: "{app}\SecretHandoff.exe"
 Name: "{group}\Anleitung"; Filename: "{app}\README.md"
+
+#include "UserPath.iss"

@@ -4,7 +4,13 @@
 
 [GitHub-Releases](https://github.com/JustUndef/secret-handoff/releases) enthalten nach erfolgreichem Tag-Build den Installer, ein portables ZIP und `SHA256SUMS.txt`. Die Pakete sind derzeit nicht codesigniert. Installer und Paketbau ersetzen keine vollständige MVP-Abnahme; offene Prüfungen stehen in [TESTING.md](TESTING.md).
 
-Der Installer installiert für den aktuellen Benutzer unter `%LOCALAPPDATA%\Programs\Secret Handoff`, legt einen Startmenüeintrag an und bietet die normale Windows-Deinstallation. Er benötigt keine Administratorrechte, ändert keinen PATH, registriert keine Dateizuordnung und startet keinen Auftrag automatisch. Das ZIP kann alternativ in einen eigenen Ordner entpackt werden. Beide Varianten enthalten .NET; eine separate Runtime-Installation ist nicht erforderlich.
+Der Installer installiert für den aktuellen Benutzer unter `%LOCALAPPDATA%\Programs\Secret Handoff`, legt einen Startmenüeintrag an und bietet die normale Windows-Deinstallation. Er benötigt keine Administratorrechte, registriert keine Dateizuordnung und startet keinen Auftrag automatisch. Das ZIP kann alternativ in einen eigenen Ordner entpackt werden. Beide Varianten enthalten .NET; eine separate Runtime-Installation ist nicht erforderlich.
+
+Die optionale Checkbox **„Secret Handoff zum Benutzer-PATH hinzufügen (neue Terminals)“** ist bei einer neuen Installation ausgeschaltet. Bei Auswahl ergänzt der Installer ausschließlich den Installationsordner im Benutzer-PATH (`HKCU\Environment\Path`); der System-PATH bleibt unberührt. Bei erneuter Installation wird die vorherige Auswahl übernommen. Bereits vorhandene Einträge werden nicht übernommen oder bei der Deinstallation entfernt. Abwählen bei erneuter Installation und Deinstallieren entfernen nur den unverändert vorhandenen Eintrag, den dieser Installer selbst ergänzt hat. Andere Einträge und der Registry-Zeichenkettentyp bleiben erhalten; es wird kein alter vollständiger PATH-Snapshot zurückgeschrieben.
+
+Danach lässt sich `SecretHandoff.exe` ohne Installationspfad aufrufen. Windows wird über die Umgebungsänderung informiert. Bereits laufende Terminals und Codex behalten ihre bisherige Umgebung: Terminal bzw. Terminal-App und bei Bedarf Codex vollständig schließen und erneut starten. Die Option verändert nicht die eingeschränkte Umgebung genehmigter Zielprozesse. Secret-Werte werden niemals zum PATH hinzugefügt. Ein Installationsordner mit Semikolon kann für diese Option nicht verwendet werden.
+
+Für stille Installationen aktiviert `/TASKS="userpath"` die Option; `/TASKS=""` wählt sie ausdrücklich ab. Das portable ZIP verändert den PATH nicht. Details zur Prüfung: [INSTALLER-TESTING.md](INSTALLER-TESTING.md).
 
 Über den Startmenüeintrag öffnet sich die Auftragsauswahl. Für Aufträge aus Codex liegt das zentrale Aufrufskript direkt neben der EXE:
 
