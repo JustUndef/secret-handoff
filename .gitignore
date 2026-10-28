@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+.build/
+artifacts/
+*.user
+*.suo
+*.local
+*.local.*
+.env
+.env.*
