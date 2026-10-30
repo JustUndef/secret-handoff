@@ -59,6 +59,7 @@ Broader compatibility (other harnesses, legacy shells, native programs with cust
 
 ## Remaining distribution work
 
+Hosted Windows CI passed for source commit `ebcdc53ffe3a6cacf2af90d5ffb6f1719436795b`: build/custom synthetic suite and instruction-only skill validation both succeeded. See [the October 30, 2026 run](https://github.com/JustUndef/secret-handoff/actions/runs/41073256881). The subsequent evidence-only documentation update does not change the tested application, tests, skill or workflows.
+
 - Exercise clean installation, update and uninstall on a disposable Windows environment or an explicitly approved existing installation.
-- Review the hosted Windows CI result for the published source revision.
 - Choose and publish a release version deliberately after distribution checks; local `0.0.0-rc.1` artifacts are test builds, not a published 1.0 release.
