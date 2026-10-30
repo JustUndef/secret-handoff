@@ -19,6 +19,8 @@ An existing Inno Setup 6 installation is required; alternatively, specify its co
 
 ## Evidence
 
+October 30, 2026: the repaired build passed [hosted installation, reinstallation, uninstallation and isolated PATH checks](https://github.com/JustUndef/secret-handoff/actions/runs/41075356072). A separate local silent old-to-new update and uninstall also passed. See [TESTING.md](TESTING.md) for the test conditions and limitations.
+
 Executed locally on Windows on October 28, 2026: Inno compilation succeeded, and all six synthetic PATH test groups passed with `INSTALLER_PATH_TESTS_PASSED`. This used the last previously verified release-capable program build; the CLI extension being developed in parallel was neither built nor modified. An initial run showed that the test also needed to wait for the temporary uninstall helper process. Tests now wait for its process tree. Ownership metadata is stored in a separate installer registry key so that it survives reinstallation.
 
 The normal local installer round trip subsequently passed as well. The [GitHub test run for commit 792b863](https://github.com/JustUndef/secret-handoff/actions/runs/40716000388) passed completely: the existing synthetic integration tests, release packaging, package verification, normal installer round trip, isolated PATH tests, and artifact upload. Publishing was skipped as intended for the manual run; no version tag or release was created.

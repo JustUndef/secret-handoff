@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- October 30, 2026: silent installer roundtrip, isolated PATH tests, and old-to-new update and uninstall passed.
+
 - October 30, 2026: recorded successful human-assisted synthetic handoff and preapproval cancellation with the repaired portable build; masking and recipient visibility confirmed. Installer/update acceptance remains open.
 
 - Scope reset: PRODUCT-CONTRACT.md records provider-independent local secret entry for trusted programs and useful output returned to the agent.

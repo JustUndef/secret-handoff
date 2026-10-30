@@ -53,7 +53,11 @@ Actual Codex Stop previously left the running tree alive; an independent observe
 
 A fresh self-contained win-x64 package (local test version 0.0.0-rc.1) and installer were built for this reset. Package smoke checks and SHA-256 verification passed. Eight additional integration groups against the packaged EXE passed: help/errors, useful result without the input token, failure output, large binary output, arguments/environment/CWD, preapproval cancellation, concurrent requests, and JSON compatibility. These checks use the actual packaged application with owned synthetic input windows. Older packages still discard output.
 
-Installer roundtrip tests are blocked by the existing-installation guard on this machine. The existing installation was not overwritten and remains older than the tested portable build. The repository skill passed static validation and the previously installed four-file skill was backed up, updated and hash-verified against the reviewed source. The human-assisted checks above used this updated skill and the new portable EXE together.
+The repository skill passed static validation and the previously installed four-file skill was backed up, updated and hash-verified against the reviewed source. The human-assisted checks above used this updated skill and the new portable EXE together.
+
+### Installer and update acceptance — October 30, 2026
+
+The [manual Windows release workflow](https://github.com/JustUndef/secret-handoff/actions/runs/41075356072) passed the synthetic suite, package checks, clean install, same-version reinstall, uninstall and isolated synthetic PATH tests. It uploaded test artifacts and skipped publication. Separately, an isolated local test installed the old `0.0.0-rc.0` output-discarding build, verified its old help, installed the repaired `0.0.0-rc.1` over it, verified the current passthrough help and package smoke checks, and uninstalled successfully. The test used a fresh directory, disabled the PATH task and refused to run if the application uninstall registration existed. On this run the elevated check found no registration and no EXE at the default installation path; no existing installation was overwritten. These checks exercised silent installation, not manual installer UI or terminal PATH propagation.
 
 Broader compatibility (other harnesses, legacy shells, native programs with custom argument parsers, other Windows versions and high-DPI/clipboard interaction) is not established by the synthetic suite. No public release is claimed. Hosted CI results are recorded separately from local acceptance evidence.
 
@@ -61,5 +65,4 @@ Broader compatibility (other harnesses, legacy shells, native programs with cust
 
 Hosted Windows CI passed for source commit `ebcdc53ffe3a6cacf2af90d5ffb6f1719436795b`: build/custom synthetic suite and instruction-only skill validation both succeeded. See [the October 30, 2026 run](https://github.com/JustUndef/secret-handoff/actions/runs/41073256881). The subsequent evidence-only documentation update does not change the tested application, tests, skill or workflows.
 
-- Exercise clean installation, update and uninstall on a disposable Windows environment or an explicitly approved existing installation.
 - Choose and publish a release version deliberately after distribution checks; local `0.0.0-rc.1` artifacts are test builds, not a published 1.0 release.

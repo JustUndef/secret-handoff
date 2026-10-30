@@ -37,7 +37,7 @@ Install the [description-only skill](skills/secret-handoff/SKILL.md) separately 
 
 ## Build and test
 
-The core workflow passed human-assisted synthetic handoff and preapproval cancellation checks on October 30, 2026. Masking and recipient visibility were confirmed locally. The revised automated suite and packaged integration tests also passed. Installer/update acceptance remains open; see [TESTING.md](TESTING.md) for evidence and limits. Existing older installations must be updated or replaced by a reviewed portable build before using output passthrough.
+The core workflow passed human-assisted synthetic handoff and preapproval cancellation checks on October 30, 2026. Masking and recipient visibility were confirmed locally. The revised automated suite, packaged integration tests, and silent installer/update checks also passed; see [TESTING.md](TESTING.md) for evidence and limits. Older installations must be updated or replaced by a reviewed portable build before using output passthrough.
 
 Windows 11 x64 and the .NET SDK selected by global.json are the supported development baseline. Release packages include .NET; portable ZIP and per-user installer instructions are in [RELEASING.md](RELEASING.md).
 

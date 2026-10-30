@@ -1,6 +1,6 @@
 # Contributing
 
-Secret Handoff is a Windows application under development. Contributions are welcome, including work supported by coding agents. The core workflow has passed human-assisted synthetic acceptance; installer/update acceptance remains open. See [TESTING.md](TESTING.md) for the precise evidence and limits.
+Secret Handoff is a Windows application under development. Contributions are welcome, including work supported by coding agents. The core workflow has passed human-assisted synthetic acceptance and silent installer/update checks. See [TESTING.md](TESTING.md) for the precise evidence and limits.
 
 ## Before you start
 
