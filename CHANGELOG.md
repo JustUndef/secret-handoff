@@ -1,10 +1,10 @@
 # Changelog
 
-## Unreleased
+## 1.0.0 — 2026-10-30
 
 - October 30, 2026: silent installer roundtrip, isolated PATH tests, and old-to-new update and uninstall passed.
 
-- October 30, 2026: recorded successful human-assisted synthetic handoff and preapproval cancellation with the repaired portable build; masking and recipient visibility confirmed. Installer/update acceptance remains open.
+- Human-assisted synthetic handoff and preapproval cancellation passed; masking and recipient visibility confirmed. A real 1Password CLI handoff and retrieval of a designated test entry also succeeded.
 
 - Scope reset: PRODUCT-CONTRACT.md records provider-independent local secret entry for trusted programs and useful output returned to the agent.
 - Target stdout/stderr now pass through unchanged, including intentional credential/data results. Completion closes automatically; no fixed execution timeout or single-request mutex.
@@ -23,4 +23,4 @@
 - English project documentation, shared agent instructions, contributor/security guidance, issue/PR templates, and a PR build/test workflow.
 - English application UI, CLI help and diagnostics, installer, and synthetic test descriptions, with matching UI test updates.
 
-No GitHub release had been published at the October 28, 2026 repository review. Test package versions and successful manual packaging workflows are not published releases. Maintainers should create a dated version section only when that version is actually released.
+Test package versions and successful manual packaging workflows are not published releases.

@@ -2,7 +2,7 @@
 
 ## Windows 11 x64
 
-[GitHub releases](https://github.com/JustUndef/secret-handoff/releases) contain the installer, a portable ZIP, and `SHA256SUMS.txt` after a successful tag build. No GitHub release had been published at the time of the October 28, 2026 repository review; successful manual workflow runs provide build artifacts instead. Packages are currently unsigned. Installers and packaging do not establish full MVP acceptance; outstanding checks are listed in [TESTING.md](TESTING.md).
+[GitHub releases](https://github.com/JustUndef/secret-handoff/releases) contain the installer, a portable ZIP, and `SHA256SUMS.txt` after a successful tag build. Packages are unsigned, so Windows may show an unknown publisher or SmartScreen warning. Checksums support integrity comparisons but do not authenticate the publisher. See [TESTING.md](TESTING.md) for acceptance evidence and limitations.
 
 The installer uses English messages, installs for the current user under `%LOCALAPPDATA%\Programs\Secret Handoff`, adds Start menu entries for the application and documentation, and supports normal Windows uninstallation. It requires no administrator privileges, registers no file association, and starts no request automatically. Alternatively, extract the ZIP into a directory of your choice. Both formats include .NET; no separate runtime installation is required.
 

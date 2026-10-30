@@ -49,6 +49,8 @@ The new self-contained portable EXE was exercised through the installed instruct
 
 The core handoff and cancellation workflow has therefore been exercised successfully by a human. This is not an installer acceptance or a claim of universal harness compatibility. The agent was explicitly directed to read the installed skill; implicit discovery in an otherwise unprompted fresh chat was not retested for this revision. Earlier discovery evidence used the old output-discarding build. The [synthetic procedure](skills/secret-handoff/references/setup.md) remains available for reproduction.
 
+On October 30, 2026, at the owner's explicit request, a real 1Password CLI operation also succeeded: a service account token was entered locally and the designated test entry was returned to the agent. No token or retrieved values are recorded in this repository. This was a specific authorized practical check, not a change to the synthetic-only development test policy.
+
 Actual Codex Stop previously left the running tree alive; an independent observer cleaned up afterward. That result remains historical evidence and is not a current acceptance gate. Current local Stop affects only the direct target.
 
 A fresh self-contained win-x64 package (local test version 0.0.0-rc.1) and installer were built for this reset. Package smoke checks and SHA-256 verification passed. Eight additional integration groups against the packaged EXE passed: help/errors, useful result without the input token, failure output, large binary output, arguments/environment/CWD, preapproval cancellation, concurrent requests, and JSON compatibility. These checks use the actual packaged application with owned synthetic input windows. Older packages still discard output.
@@ -59,10 +61,10 @@ The repository skill passed static validation and the previously installed four-
 
 The [manual Windows release workflow](https://github.com/JustUndef/secret-handoff/actions/runs/41075356072) passed the synthetic suite, package checks, clean install, same-version reinstall, uninstall and isolated synthetic PATH tests. It uploaded test artifacts and skipped publication. Separately, an isolated local test installed the old `0.0.0-rc.0` output-discarding build, verified its old help, installed the repaired `0.0.0-rc.1` over it, verified the current passthrough help and package smoke checks, and uninstalled successfully. The test used a fresh directory, disabled the PATH task and refused to run if the application uninstall registration existed. On this run the elevated check found no registration and no EXE at the default installation path; no existing installation was overwritten. These checks exercised silent installation, not manual installer UI or terminal PATH propagation.
 
-Broader compatibility (other harnesses, legacy shells, native programs with custom argument parsers, other Windows versions and high-DPI/clipboard interaction) is not established by the synthetic suite. No public release is claimed. Hosted CI results are recorded separately from local acceptance evidence.
+Broader compatibility (other harnesses, legacy shells, native programs with custom argument parsers, other Windows versions and high-DPI/clipboard interaction) is not established by the synthetic suite. Hosted CI results are recorded separately from local acceptance evidence.
 
 ## Remaining distribution work
 
 Hosted Windows CI passed for source commit `ebcdc53ffe3a6cacf2af90d5ffb6f1719436795b`: build/custom synthetic suite and instruction-only skill validation both succeeded. See [the October 30, 2026 run](https://github.com/JustUndef/secret-handoff/actions/runs/41073256881). The subsequent evidence-only documentation update does not change the tested application, tests, skill or workflows.
 
-- Choose and publish a release version deliberately after distribution checks; local `0.0.0-rc.1` artifacts are test builds, not a published 1.0 release.
+- Local `0.0.0-rc.1` artifacts are test builds; official releases are published separately through the tag workflow.

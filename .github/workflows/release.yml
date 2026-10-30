@@ -86,6 +86,6 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         shell: bash
         run: |
-          args=(--verify-tag --generate-notes --title "Secret Handoff $RELEASE_TAG")
+          args=(--verify-tag --generate-notes --title "Secret Handoff $RELEASE_TAG" --notes "Windows packages are unsigned; Windows may display an unknown publisher or SmartScreen warning. SHA256SUMS.txt provides integrity checks, not publisher authentication. Install the agent skill separately; see the repository README.")
           if [[ "$RELEASE_TAG" == *-* ]]; then args+=(--prerelease); fi
           gh release create "$RELEASE_TAG" release/* "${args[@]}"
