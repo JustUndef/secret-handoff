@@ -1,19 +1,19 @@
 # Security policy
 
-## Project status and scope
+## Boundary
 
-Secret Handoff is a prototype; full MVP acceptance and an independent security audit are pending. There is no guaranteed security support period for a released version. Start with the current source and check [TESTING.md](TESTING.md) for verified behavior and remaining evidence.
+Secret Handoff accepts locally entered access secrets for a specific user-approved trusted program. The launcher does not deliberately write those secrets to storage, command arguments, its own diagnostics, chat, or the caller/user/system environment.
 
-The launcher aims to avoid accidental secret storage and disclosure in chat. It does not isolate secrets from an approved target, sufficiently privileged processes running as the same user, or administrators. Job Objects and discarded standard output are not a sandbox. Process termination does not revoke tokens or guarantee complete memory erasure. See [ARCHITECTURE.md](ARCHITECTURE.md) for the full boundary.
+The approved program receives the values and is trusted to handle them. Its stdout/stderr is returned unchanged, including credentials or data intentionally requested by the user. Output is not filtered into a secrecy guarantee. Receiving programs may persist or disclose their inputs; returned results may be retained by the caller.
 
-## Reporting a vulnerability
+This application does not provide hostile-recipient isolation, protection against sufficiently privileged same-user memory inspection, guaranteed memory erasure, or token revocation. Clipboard history, OS dumps/paging and target behavior remain outside its control. Process lifetime management is not a secrecy boundary. Read [PRODUCT-CONTRACT.md](PRODUCT-CONTRACT.md) and [ARCHITECTURE.md](ARCHITECTURE.md).
 
-Use [GitHub's private vulnerability report form](https://github.com/JustUndef/secret-handoff/security/advisories/new) **if private reporting is enabled**. Its availability has not yet been verified for this repository. If the form is unavailable, open an issue asking the maintainer to provide a private reporting channel; include no vulnerability details, exploit, private metadata, or credentials in that public request. Wait for a private channel before sharing sensitive details.
+## Reporting
 
-In a private report, provide the affected version or commit, relevant Windows/.NET versions, a description of the impact, and a minimal reproduction using synthetic values and local programs. Do not send real tokens, vault entries, environment dumps, raw process output containing secrets, or personal data. Avoid testing against real services or unrelated processes.
+Use [GitHub private vulnerability reporting](https://github.com/JustUndef/secret-handoff/security/advisories/new) if enabled. Its availability has not been verified here. Otherwise request a private reporting channel without posting vulnerability details or credentials publicly.
 
-Response and remediation times depend on maintainer availability; no fixed SLA is promised. Coordinate publication of vulnerability details with the maintainer.
+Provide version, Windows/.NET versions, impact, and a minimal local synthetic reproduction. Never provide real tokens, vault entries, environment dumps, or captured sensitive output. No response SLA or security support period is promised.
 
-## Maintenance responsibilities
+## Maintenance
 
-Release packages bundle a pinned .NET runtime. Maintainers must review official runtime security updates, update `release-runtime.json`, rebuild, test, and distribute replacement packages. The launcher has no automatic updater. Current packages are unsigned; SHA-256 checksums support integrity checks against a trusted reference, not publisher authentication.
+Packages include a pinned .NET runtime, so runtime updates require rebuilding and redistribution. Packages are currently unsigned; checksums establish integrity against a trusted comparison, not publisher identity. Current verification and limitations are in [TESTING.md](TESTING.md).

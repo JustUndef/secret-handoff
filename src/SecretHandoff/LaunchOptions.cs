@@ -1,11 +1,11 @@
-using System.Globalization;
+
 using SecretHandoff.Core;
 
 namespace SecretHandoff;
 
 internal sealed class CliException(string diagnostic) : Exception(diagnostic);
 
-internal sealed record LaunchOptions(string? RequestPath, uint? ParentId = null, long? ParentCreation = null,
+internal sealed record LaunchOptions(string? RequestPath,
     LaunchRequest? DirectRequest = null, bool Help = false)
 {
     internal static LaunchOptions Parse(string[] args) => Parse(args, Environment.CurrentDirectory);
@@ -15,11 +15,12 @@ internal sealed record LaunchOptions(string? RequestPath, uint? ParentId = null,
         if (args.Length == 0) return new(RequestPath: null);
         if (args.Length == 1 && args[0] == "--help") return new(null, Help: true);
         string? path = null, directory = null;
-        uint? parent = null;
-        long? creation = null;
+
+
         var secrets = new List<SecretSpec>();
         int target = -1;
         bool mayDescribe = false;
+
         for (int i = 0; i < args.Length; i++)
         {
             string option = args[i];
@@ -52,14 +53,6 @@ internal sealed record LaunchOptions(string? RequestPath, uint? ParentId = null,
                     if (!descriptionAllowed) throw new CliException("--description must immediately follow --secret NAME.");
                     secrets[^1] = secrets[^1] with { Description = Value() };
                     break;
-                case "--watch-parent":
-                    if (parent != null) throw new CliException("--watch-parent may appear only once.");
-                    if (!uint.TryParse(Value(), NumberStyles.None, CultureInfo.InvariantCulture, out uint pid) ||
-                        pid == 0 || pid == Environment.ProcessId ||
-                        !long.TryParse(Value(), NumberStyles.None, CultureInfo.InvariantCulture, out long time) || time <= 0)
-                        throw new CliException("Invalid caller binding. Expected: --watch-parent PID FILETIME.");
-                    parent = pid; creation = time;
-                    break;
                 default:
                     throw new CliException("Unknown option or unexpected argument. --help must be used alone.");
             }
@@ -68,7 +61,7 @@ internal sealed record LaunchOptions(string? RequestPath, uint? ParentId = null,
         {
             if (target != -1 || directory != null || secrets.Count != 0)
                 throw new CliException("--request cannot be combined with direct-mode options or --.");
-            return new(path, parent, creation);
+            return new(path);
         }
         if (target < 0 || target >= args.Length || secrets.Count == 0)
             throw new CliException("Direct mode requires --secret NAME and -- PROGRAM [ARGUMENTS]. Help: --help.");
@@ -82,7 +75,7 @@ internal sealed record LaunchOptions(string? RequestPath, uint? ParentId = null,
                 ? directory : Path.Combine(callerDirectory, directory);
         }
         catch { throw new RequestException(); }
-        return new(null, parent, creation,
+        return new(null,
             RequestLoader.Create(args[target], args.Skip(target + 1), resolved, secrets));
     }
 }

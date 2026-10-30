@@ -11,10 +11,10 @@ internal sealed class ApprovalLifecycle : IDisposable
     private Task<RunResult>? execution;
     private bool started, stopping, disposed;
 
-    internal ApprovalLifecycle(CancellationToken parentTermination,
+    internal ApprovalLifecycle(
         Func<LaunchRequest, Dictionary<string, string>, CancellationToken, Task<RunResult>> run)
     {
-        cancellation = CancellationTokenSource.CreateLinkedTokenSource(parentTermination);
+        cancellation = new CancellationTokenSource();
         this.run = run;
     }
 

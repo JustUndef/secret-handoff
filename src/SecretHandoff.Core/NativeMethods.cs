@@ -13,6 +13,17 @@ internal sealed class KernelHandle : SafeHandleZeroOrMinusOneIsInvalid
 
 internal static class NativeMethods
 {
+    [DllImport("kernel32.dll")]
+    internal static extern IntPtr GetStdHandle(int channel);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool DuplicateHandle(IntPtr sourceProcess, IntPtr source, IntPtr targetProcess,
+        out KernelHandle target, uint access, [MarshalAs(UnmanagedType.Bool)] bool inherit, uint options);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool TerminateProcess(KernelHandle process, uint code);
     [StructLayout(LayoutKind.Sequential)]
     internal struct SecurityAttributes
     {
@@ -37,53 +48,9 @@ internal static class NativeMethods
     [StructLayout(LayoutKind.Sequential)]
     internal struct ProcessInfo { internal IntPtr Process, Thread; internal uint ProcessId, ThreadId; }
 
-    [StructLayout(LayoutKind.Sequential)]
-    internal struct BasicLimits
-    {
-        internal long ProcessTime, JobTime;
-        internal uint Flags;
-        internal UIntPtr MinWorkingSet, MaxWorkingSet;
-        internal uint ProcessLimit;
-        internal UIntPtr Affinity;
-        internal uint Priority, Scheduling;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal struct IoCounters { internal ulong ReadOps, WriteOps, OtherOps, ReadBytes, WriteBytes, OtherBytes; }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal struct ExtendedLimits
-    {
-        internal BasicLimits Basic;
-        internal IoCounters Io;
-        internal UIntPtr ProcessMemory, JobMemory, PeakProcess, PeakJob;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal struct Accounting
-    {
-        internal long UserTime, KernelTime, PeriodUserTime, PeriodKernelTime;
-        internal uint PageFaults, TotalProcesses, ActiveProcesses, TerminatedProcesses;
-    }
-
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static extern bool CloseHandle(IntPtr handle);
-
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    internal static extern KernelHandle CreateJobObjectW(IntPtr security, string? name);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    internal static extern bool SetInformationJobObject(KernelHandle job, int infoClass, ref ExtendedLimits info, int size);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    internal static extern bool QueryInformationJobObject(KernelHandle job, int infoClass, out Accounting info, int size, IntPtr returned);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    internal static extern bool TerminateJobObject(KernelHandle job, uint code);
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     internal static extern KernelHandle CreateFileW(string name, uint access, uint share,
@@ -117,10 +84,5 @@ internal static class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static extern bool GetExitCodeProcess(KernelHandle process, out uint code);
 
-    [DllImport("kernel32.dll", SetLastError = true)]
-    internal static extern KernelHandle OpenProcess(uint access, [MarshalAs(UnmanagedType.Bool)] bool inherit, uint processId);
 
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    internal static extern bool GetProcessTimes(KernelHandle process, out long creation, out long exit, out long kernel, out long user);
 }

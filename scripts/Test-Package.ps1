@@ -7,7 +7,7 @@ if (@($runtime.runtimeOptions.includedFrameworks).Count -ne 2) { throw 'PACKAGE_
 foreach ($framework in $runtime.runtimeOptions.includedFrameworks) {
     if ($framework.version -ne $expectedRuntime) { throw 'PACKAGE_RUNTIME_VERSION_FAILED' }
 }
-foreach ($name in @('SecretHandoff.exe', 'coreclr.dll', 'System.Windows.Forms.dll', 'Invoke-Handoff.ps1', 'LICENSE', 'README.md', 'AGENTS.md', 'CONTRIBUTING.md', 'SECURITY.md', 'THIRD-PARTY-NOTICES.md',
+foreach ($name in @('PRODUCT-CONTRACT.md', 'skills\secret-handoff\SKILL.md', 'SecretHandoff.exe', 'coreclr.dll', 'System.Windows.Forms.dll', 'Invoke-Handoff.ps1', 'LICENSE', 'README.md', 'AGENTS.md', 'CONTRIBUTING.md', 'SECURITY.md', 'THIRD-PARTY-NOTICES.md',
     'third-party\microsoft.netcore.app.runtime.win-x64\LICENSE.TXT', 'third-party\microsoft.netcore.app.runtime.win-x64\THIRD-PARTY-NOTICES.TXT',
     'third-party\microsoft.windowsdesktop.app.runtime.win-x64\LICENSE', 'third-party\microsoft.netcore.app.host.win-x64\LICENSE.TXT',
     'third-party\microsoft.netcore.app.host.win-x64\THIRD-PARTY-NOTICES.TXT')) {
@@ -18,7 +18,7 @@ foreach ($name in @('SecretHandoff.exe', 'coreclr.dll', 'System.Windows.Forms.dl
 foreach ($mode in @('help', 'invalid')) {
     $info = [Diagnostics.ProcessStartInfo]::new()
     $info.FileName = Join-Path $app 'SecretHandoff.exe'
-    $info.Arguments = if ($mode -eq 'help') { '--help' } else { '--request SHANDOFF_PACKAGE_METADATA --watch-parent 0 0' }
+    $info.Arguments = if ($mode -eq 'help') { '--help' } else { '--unknown SHANDOFF_PACKAGE_METADATA' }
     $info.UseShellExecute = $false
     $info.CreateNoWindow = $true
     $info.RedirectStandardOutput = $true
@@ -36,7 +36,7 @@ foreach ($mode in @('help', 'invalid')) {
         $stderr = $stderrTask.GetAwaiter().GetResult()
         if ($mode -eq 'help') {
             if ($child.ExitCode -ne 0) { throw 'PACKAGE_HELP_STATUS_FAILED' }
-            if ($stderr.Length -ne 0 -or -not $stdout.Contains('--secret') -or -not $stdout.Contains('--request') -or $stdout.Length -gt 16384) { throw 'PACKAGE_HELP_OUTPUT_FAILED' }
+            if ($stderr.Length -ne 0 -or -not $stdout.Contains('Output contract: passthrough') -or -not $stdout.Contains('--request') -or $stdout.Length -gt 16384) { throw 'PACKAGE_HELP_OUTPUT_FAILED' }
         } else {
             if ($child.ExitCode -ne 5) { throw 'PACKAGE_STATUS_FAILED' }
             if ($stdout.Length -ne 0 -or $stderr -cnotmatch '\AINVALID_REQUEST: [^\r\n]{1,512}\r?\n\z' -or $stderr.Contains('SHANDOFF_PACKAGE_METADATA')) { throw 'PACKAGE_OUTPUT_FAILED' }

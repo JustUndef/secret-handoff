@@ -1,44 +1,35 @@
-using System.Runtime.InteropServices;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace SecretHandoff.Core;
 
 public static class EnvironmentPolicy
 {
-    private static readonly HashSet<string> Reserved = new(StringComparer.OrdinalIgnoreCase)
+    // Runtime configuration only. Arbitrary ambient credentials are never copied.
+    internal static readonly string[] RuntimeNames = ["SystemRoot", "WINDIR", "PATH", "PATHEXT", "COMSPEC",
+        "TEMP", "TMP", "USERPROFILE", "HOMEDRIVE", "HOMEPATH", "APPDATA", "LOCALAPPDATA",
+        "PROGRAMDATA", "PROGRAMFILES", "PROGRAMFILES(X86)", "PROGRAMW6432",
+        "PROCESSOR_ARCHITECTURE", "NUMBER_OF_PROCESSORS"];
+    private static readonly HashSet<string> Reserved = new(RuntimeNames.Concat(new[]
     {
-        "PATH", "PATHEXT", "SystemRoot", "WINDIR", "COMSPEC", "TEMP", "TMP", "HOME", "USERPROFILE",
-        "APPDATA", "LOCALAPPDATA", "PSModulePath", "ENV", "BASH_ENV", "JAVA_TOOL_OPTIONS",
-        "_JAVA_OPTIONS", "JDK_JAVA_OPTIONS"
-    };
-    private static readonly string[] Prefixes = ["SHANDOFF_", "DOTNET_", "CORECLR_", "COMPlus_", "COR_",
-        "NODE_", "PYTHON", "RUBY", "PERL", "LD_", "DYLD_", "ELECTRON_", "GIT_", "SSH_", "PROGRAM"];
+        "HOME", "PSModulePath", "ENV", "BASH_ENV", "NODE_OPTIONS", "PYTHONPATH", "PYTHONHOME",
+        "JAVA_TOOL_OPTIONS", "_JAVA_OPTIONS", "JDK_JAVA_OPTIONS", "LD_PRELOAD", "LD_LIBRARY_PATH",
+        "DOTNET_STARTUP_HOOKS", "DOTNET_ADDITIONAL_DEPS", "DOTNET_SHARED_STORE"
+    }), StringComparer.OrdinalIgnoreCase);
 
     public static bool AllowedName(string name) => name.Length is > 0 and <= 128 &&
-        Regex.IsMatch(name, "\\A[A-Za-z_][A-Za-z0-9_]*\\z", RegexOptions.CultureInvariant) &&
-        !Reserved.Contains(name) && !Prefixes.Any(p => name.StartsWith(p, StringComparison.OrdinalIgnoreCase));
+        Regex.IsMatch(name, "\\A[A-Za-z_][A-Za-z0-9_]*\\z", RegexOptions.CultureInvariant) && !Reserved.Contains(name);
 
-    public static bool ValidValue(string value) => value.Length is > 0 and <= 16384 &&
-        value.IndexOfAny(['\0', '\r', '\n']) < 0;
+    public static bool ValidValue(string value) => value.Length is > 0 and <= 16384 && value.IndexOfAny(['\0', '\r', '\n']) < 0;
 
     internal static char[] Build(LaunchRequest request, IReadOnlyDictionary<string, string> values)
     {
         if (values.Count != request.Secrets.Length || request.Secrets.Any(s =>
             !values.TryGetValue(s.Name, out var value) || !ValidValue(value)) ||
-            values.Keys.Any(k => !request.Secrets.Any(s => string.Equals(k, s.Name, StringComparison.Ordinal))))
-            throw new RequestException();
-        var windows = new StringBuilder(32768);
-        uint length = GetWindowsDirectoryW(windows, (uint)windows.Capacity);
-        if (length == 0 || length >= windows.Capacity) throw new InvalidOperationException();
-        string root = windows.ToString();
-        var entries = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["SystemRoot"] = root, ["WINDIR"] = root,
-            ["PATH"] = Path.Combine(root, "System32") + ";" + root
-        };
-        foreach (var secret in request.Secrets) entries.Add(secret.Name, values[secret.Name]);
-        // Never concatenate a second managed string containing all secret values.
+            values.Keys.Any(k => !request.Secrets.Any(s => s.Name == k))) throw new RequestException();
+        var entries = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string name in RuntimeNames)
+            if (Environment.GetEnvironmentVariable(name) is string value) entries[name] = value;
+        foreach (var entry in values) entries.Add(entry.Key, entry.Value);
         var block = new char[entries.Sum(p => p.Key.Length + p.Value.Length + 2) + 1];
         int offset = 0;
         foreach (var pair in entries)
@@ -50,7 +41,4 @@ public static class EnvironmentPolicy
         }
         return block;
     }
-
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
-    private static extern uint GetWindowsDirectoryW(StringBuilder buffer, uint size);
 }

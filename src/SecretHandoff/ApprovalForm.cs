@@ -1,4 +1,4 @@
-using System.Diagnostics;
+
 using System.Text.Json;
 using SecretHandoff.Core;
 
@@ -8,12 +8,7 @@ internal sealed class ApprovalForm : Form
 {
     private readonly LaunchRequest request;
     private readonly ApprovalLifecycle lifecycle;
-    private readonly CancellationToken parentTermination;
-    private CancellationTokenRegistration parentRegistration;
-    private readonly System.Windows.Forms.Timer approvalTimer = new() { Interval = 500 };
-    private readonly Stopwatch approvalWatch = new();
-    private readonly TimeSpan approvalLimit;
-    private bool running, terminal, closingAfterRun, lifecycleDisposed;
+    private bool running, terminal, lifecycleDisposed;
     internal List<SecretInput> Inputs { get; } = [];
     internal List<Button> PasteButtons { get; } = [];
     internal Button StartButton { get; } = new() { Text = "Start", AutoSize = true, Enabled = false };
@@ -24,14 +19,10 @@ internal sealed class ApprovalForm : Form
 
     internal ApprovalForm(LaunchRequest request,
         Func<string?>? clipboard = null,
-        Func<LaunchRequest, Dictionary<string, string>, CancellationToken, Task<RunResult>>? run = null,
-        TimeSpan? approvalLimit = null,
-        CancellationToken parentTermination = default)
+        Func<LaunchRequest, Dictionary<string, string>, CancellationToken, Task<RunResult>>? run = null)
     {
         this.request = request;
-        lifecycle = new ApprovalLifecycle(parentTermination, run ?? new WindowsProcessRunner().RunAsync);
-        this.approvalLimit = approvalLimit ?? TimeSpan.FromMinutes(5);
-        this.parentTermination = parentTermination;
+        lifecycle = new ApprovalLifecycle( run ?? new WindowsProcessRunner().RunAsync);
         clipboard ??= () => Clipboard.ContainsText() ? Clipboard.GetText() : null;
         Text = "Secret Handoff – Review request";
         StartPosition = FormStartPosition.CenterScreen;
@@ -51,7 +42,7 @@ internal sealed class ApprovalForm : Form
         Controls.Add(layout);
         layout.Controls.Add(new Label
         {
-            Text = "Prototype · use synthetic test values only",
+            Text = "Enter values locally for the operation you approve",
             AutoSize = true, ForeColor = Color.Maroon, Margin = new Padding(0, 0, 0, 10)
         }, 0, 0);
 
@@ -68,10 +59,9 @@ internal sealed class ApprovalForm : Form
         layout.Controls.Add(preview, 0, 1);
         layout.Controls.Add(new Label
         {
-            Text = "Approval: 5 minutes · Execution: up to 15 minutes. Output is discarded.\r\n" +
-                "Minimal Windows environment plus your input only. The target and descendants can read and share these values.\r\n" +
-                "Cancel stops the managed process tree; remaining descendants are terminated when the target exits." +
-                (parentTermination.CanBeCanceled ? "\r\nIf the monitored caller exits, this task is stopped automatically." : ""),
+            Text = "Output from the approved program is returned to the caller, including intentionally retrieved credentials.\r\n" +
+                "The program is trusted with your input. No execution time limit.\r\n" +
+                "Stop/closing this window stops only the direct program. Agent Stop may leave it running.",
             AutoSize = true, Margin = new Padding(0, 10, 0, 10)
         }, 0, 2);
         var entries = new TableLayoutPanel { Dock = DockStyle.Fill, AutoScroll = true, ColumnCount = 2, Padding = new Padding(0, 0, 18, 0) };
@@ -102,60 +92,26 @@ internal sealed class ApprovalForm : Form
         CancelButtonControl.Click += (_, _) => CancelOrClose();
         CancelButton = CancelButtonControl;
         // Deliberately no AcceptButton: Enter in an input never grants approval.
-        Shown += (_, _) =>
-        {
-            approvalWatch.Restart(); approvalTimer.Start(); Inputs[0].Focus();
-            // Covers a parent exit before a window handle was available for BeginInvoke.
-            if (parentTermination.IsCancellationRequested) ParentEnded();
-        };
-        approvalTimer.Tick += (_, _) => CheckApprovalTimeout();
+        Shown += (_, _) => Inputs[0].Focus();
         FormClosing += (_, e) =>
         {
             if (running)
             {
                 e.Cancel = true;
-                closingAfterRun = true;
+
                 lifecycle.Cancel();
-                MessageLabel.Text = "Stopping the task and cleaning up …";
+                MessageLabel.Text = "Stopping the direct program …";
             }
             else ClearInputs();
         };
         RefreshValidity();
-        parentRegistration = parentTermination.Register(() =>
-        {
-            // The linked token stops the native runner independently of this UI callback.
-            try { if (IsHandleCreated) BeginInvoke(ParentEnded); }
-            catch (InvalidOperationException) { /* Window already closing; no raw diagnostics. */ }
-        });
-    }
-
-    private void ParentEnded()
-    {
-        if (IsDisposed) return;
-        if (running)
-        {
-            closingAfterRun = true;
-            MessageLabel.Text = "Caller exited. Stopping the task and cleaning up …";
-        }
-        else
-        {
-            // Preserve a completed result, especially CLEANUP_FAILED, while closing its display.
-            if (!terminal) Result = new RunResult(Status.Cancelled);
-            Close();
-        }
-    }
-
-    internal void CheckApprovalTimeout()
-    {
-        if (!running && !terminal && approvalWatch.Elapsed >= approvalLimit)
-            Finish(new RunResult(Status.TimedOut));
     }
 
     private void RefreshValidity()
     {
         if (running || terminal) return;
         StartButton.Enabled = Inputs.Count == request.Secrets.Length && Inputs.All(i => EnvironmentPolicy.ValidValue(i.Text));
-        MessageLabel.Text = StartButton.Enabled ? "Review the request and explicitly select Start." : "Enter all required synthetic test values.";
+        MessageLabel.Text = StartButton.Enabled ? "Review the request and explicitly select Start." : "Enter all required values.";
     }
 
     private void ShowInputError(string text) => MessageLabel.Text = text;
@@ -163,25 +119,22 @@ internal sealed class ApprovalForm : Form
     internal async Task StartApprovedAsync()
     {
         if (running || terminal) return;
-        if (parentTermination.IsCancellationRequested) { ParentEnded(); return; }
+
         RefreshValidity();
         if (!StartButton.Enabled) return;
-        // Timer messages can be delayed while another UI event is being processed.
-        if (approvalWatch.Elapsed >= approvalLimit) { Finish(new RunResult(Status.TimedOut)); return; }
         running = true;
-        approvalTimer.Stop();
         StartButton.Enabled = false;
         CancelButtonControl.Text = "Stop task";
         var values = new Dictionary<string, string>(StringComparer.Ordinal);
         for (int i = 0; i < Inputs.Count; i++) values.Add(request.Secrets[i].Name, Inputs[i].Text);
         ClearInputs();
-        MessageLabel.Text = "Task running. Output is discarded.";
+        MessageLabel.Text = "Task running. Output is returned to the caller.";
         Result = await lifecycle.StartAsync(request, values);
         running = false;
         // Disposal can finish the runner while this continuation is still queued in WinForms.
         if (IsDisposed || Disposing || lifecycleDisposed) return;
         Finish(Result);
-        if (closingAfterRun || parentTermination.IsCancellationRequested) Close();
+
     }
 
     internal void CancelOrClose()
@@ -189,7 +142,7 @@ internal sealed class ApprovalForm : Form
         if (running)
         {
             lifecycle.Cancel();
-            MessageLabel.Text = "Stopping the task and cleaning up …";
+            MessageLabel.Text = "Stopping the direct program …";
         }
         else Close();
     }
@@ -198,13 +151,13 @@ internal sealed class ApprovalForm : Form
     {
         Result = result;
         terminal = true;
-        approvalTimer.Stop();
         ClearInputs();
         StartButton.Enabled = false;
         CancelButtonControl.Text = "Close";
         MessageLabel.Text = StatusText.Category(result.Status) + " · " + StatusText.Describe(result.Status) +
             (result.TargetExitCode is uint target ? $" Target exit code: {target}." : "") +
             (result.WindowsError is int error ? $" Windows error code: {error}." : "");
+        Close();
     }
 
     private void ClearInputs()
@@ -217,15 +170,13 @@ internal sealed class ApprovalForm : Form
     {
         if (disposing && !lifecycleDisposed)
         {
-            // Cancel and confirm native cleanup before destroying controls or reporting a UI failure.
+            // Stop the direct target before destroying controls or reporting a UI failure.
             Result = lifecycle.StopAndWait(Result);
             lifecycleDisposed = true;
             running = false;
             terminal = true;
             ClearInputs();
             lifecycle.Dispose();
-            parentRegistration.Dispose();
-            approvalTimer.Dispose();
         }
         base.Dispose(disposing);
     }

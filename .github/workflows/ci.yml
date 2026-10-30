@@ -29,3 +29,5 @@ jobs:
           global-json-file: global.json
       - name: Build and run synthetic tests
         run: ./scripts/Build-Prototype.ps1 -DotnetPath (Get-Command dotnet.exe).Source
+      - name: Validate instruction-only skill
+        run: ./scripts/Test-Skill.ps1

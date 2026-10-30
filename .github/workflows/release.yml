@@ -39,6 +39,8 @@ jobs:
           "RELEASE_VERSION=$($env:RELEASE_TAG.Substring(1))" >> $env:GITHUB_ENV
       - name: Build and run local synthetic integration tests
         run: ./scripts/Build-Prototype.ps1 -DotnetPath (Get-Command dotnet).Source
+      - name: Validate instruction-only skill
+        run: ./scripts/Test-Skill.ps1
       - name: Locate Inno Setup compiler
         run: |
           $compiler = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"

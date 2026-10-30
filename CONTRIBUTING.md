@@ -1,10 +1,10 @@
 # Contributing
 
-Secret Handoff is a Windows prototype. Contributions are welcome, including work supported by coding agents. Full MVP acceptance is still pending; see [TESTING.md](TESTING.md).
+Secret Handoff is a Windows application under development. Contributions are welcome, including work supported by coding agents. The core workflow has passed human-assisted synthetic acceptance; installer/update acceptance remains open. See [TESTING.md](TESTING.md) for the precise evidence and limits.
 
 ## Before you start
 
-Read [AGENTS.md](AGENTS.md), [README.md](README.md), and [ARCHITECTURE.md](ARCHITECTURE.md). Use [GitHub issues](https://github.com/JustUndef/secret-handoff/issues) for reproducible bugs and proposed changes. Discuss changes to the request contract, security boundary, or dependencies before implementing them. Report vulnerabilities using [SECURITY.md](SECURITY.md).
+Read [PRODUCT-CONTRACT.md](PRODUCT-CONTRACT.md), [AGENTS.md](AGENTS.md), [README.md](README.md), and [ARCHITECTURE.md](ARCHITECTURE.md). Historical documents are evidence, not current requirements. Do not promote implementation choices into product requirements. Use [GitHub issues](https://github.com/JustUndef/secret-handoff/issues) for reproducible bugs and proposed changes. Discuss changes to the contract, trust boundary, or dependencies before implementing them. Report vulnerabilities using [SECURITY.md](SECURITY.md).
 
 All public project material uses English, including documentation, agent instructions, code comments, application/installer text, CLI help, diagnostics, and example descriptions. Update matching UI and diagnostic tests when changing visible text. Non-ASCII synthetic fixtures remain part of Unicode compatibility coverage.
 
@@ -26,7 +26,7 @@ The script builds the solution, creates `artifacts/demo`, and runs the custom ex
 .\scripts\Build-Prototype.ps1 -SkipTests
 ```
 
-Run the full suite after relevant changes, especially changes to process creation, handle inheritance, cancellation, or cleanup. Expect fixed `PASS` categories and `ALL_TESTS_PASSED`, with exit code 0. [TESTING.md](TESTING.md) explains focused runs, manually checked cases, and limitations. A sandbox that denies the required Windows queries cannot run the complete suite; do not weaken the path policy to make it pass. Record that limitation separately from a successful test run.
+Run the full suite after relevant changes, especially process creation, handle inheritance, output forwarding, or local cancellation. Expect fixed `PASS` categories and `ALL_TESTS_PASSED`, with exit code 0. Run scripts/Test-Skill.ps1 for skill changes. [TESTING.md](TESTING.md) distinguishes executed checks and limitations. A sandbox may deny test fixture creation, such as a junction; use normal host approval for the test rather than changing the product contract to satisfy the sandbox.
 
 ## Working with agents
 

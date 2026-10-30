@@ -72,9 +72,11 @@ try {
             if (-not $licenseFound -or ($packageId -ne 'microsoft.windowsdesktop.app.runtime.win-x64' -and -not $thirdPartyFound)) { throw 'RELEASE_RUNTIME_NOTICES_MISSING' }
         } finally { $archive.Dispose() }
     }
-    foreach ($file in @('README.md', 'ARCHITECTURE.md', 'TESTING.md', 'RELEASING.md', 'INSTALLER-TESTING.md', 'AGENTS.md', 'CONTRIBUTING.md', 'SECURITY.md', 'CODE_OF_CONDUCT.md', 'CHANGELOG.md', 'OPEN-SOURCE-READINESS.md', 'THIRD-PARTY-NOTICES.md', 'LICENSE')) {
+    foreach ($file in @('PRODUCT-CONTRACT.md', 'README.md', 'ARCHITECTURE.md', 'TESTING.md', 'RELEASING.md', 'INSTALLER-TESTING.md', 'AGENTS.md', 'CONTRIBUTING.md', 'SECURITY.md', 'CODE_OF_CONDUCT.md', 'CHANGELOG.md', 'OPEN-SOURCE-READINESS.md', 'THIRD-PARTY-NOTICES.md', 'LICENSE')) {
         Copy-Item -LiteralPath (Join-Path $root $file) -Destination $publish
     }
+    Copy-Item -LiteralPath (Join-Path $root 'docs') -Destination $publish -Recurse
+    Copy-Item -LiteralPath (Join-Path $root 'skills') -Destination $publish -Recurse
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Invoke-Handoff.ps1') -Destination $publish
     & $IsccPath /Q "/DAppVersion=$Version" "/DPublishDir=$publish" "/DReleaseDir=$release" installer/SecretHandoff.iss
     if ($LASTEXITCODE -ne 0) { throw 'RELEASE_INSTALLER_FAILED' }

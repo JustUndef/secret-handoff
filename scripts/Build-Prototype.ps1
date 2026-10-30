@@ -37,7 +37,7 @@ try {
         Where-Object Extension -In '.exe', '.dll', '.json' | Copy-Item -Destination $probeDirectory
     $request = [ordered]@{
         executable = Join-Path $probeDirectory 'SyntheticProbe.exe'
-        arguments = @('demo')
+        arguments = @('exchange')
         workingDirectory = $probeDirectory
         secrets = @(
             @{ name = 'EXAMPLE_API_TOKEN'; description = 'First synthetic test value from the instructions' }
@@ -45,7 +45,7 @@ try {
         )
     }
     [IO.File]::WriteAllText((Join-Path $demo 'synthetic.handoff.json'), ($request | ConvertTo-Json -Depth 5), [Text.UTF8Encoding]::new($false))
-    $launch = '@echo off' + "`r`n" + 'start "" "%~dp0SecretHandoff.exe" --request "%~dp0synthetic.handoff.json"' + "`r`n"
+    $launch = '@echo off' + "`r`n" + '"%~dp0SecretHandoff.exe" --request "%~dp0synthetic.handoff.json"' + "`r`n" + 'echo Launcher exit: %ERRORLEVEL%' + "`r`n" + 'pause' + "`r`n"
     [IO.File]::WriteAllText((Join-Path $demo 'Start-Synthetic-Demo.cmd'), $launch, [Text.Encoding]::ASCII)
     if (-not $SkipTests) {
         & (Join-Path $projectRoot 'tests\SecretHandoff.Tests\bin\Debug\net10.0-windows\SecretHandoff.Tests.exe')

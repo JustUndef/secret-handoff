@@ -12,13 +12,13 @@ Afterward, `SecretHandoff.exe` can be invoked without its installation path. Win
 
 For silent installation, `/TASKS="userpath"` enables the option; `/TASKS=""` explicitly disables it. The portable ZIP does not modify PATH. Test details: [INSTALLER-TESTING.md](INSTALLER-TESTING.md).
 
-The Start menu entry opens the request file picker. For requests from Codex, the shared wrapper script is installed next to the EXE:
+The Start menu entry opens the optional request file picker. Agents invoke the EXE directly, using the separately installed description-only skill:
 
 ```powershell
-& "$env:LOCALAPPDATA\Programs\Secret Handoff\Invoke-Handoff.ps1" -RequestPath 'D:\Projects\Example\task.handoff.json'
+& "$env:LOCALAPPDATA\Programs\Secret Handoff\SecretHandoff.exe" --secret API_TOKEN -- 'C:\Tools\Worker.exe' --mode fetch
 ```
 
-The script uses the adjacent EXE. In the source tree, it falls back to the development demo under `artifacts/demo`. Caller binding and all security boundaries remain unchanged. The scripts neither set nor assume a modified PowerShell execution policy; if script execution is blocked, direct EXE invocation remains available with the lifecycle limitations described in [ARCHITECTURE.md](ARCHITECTURE.md).
+Check standalone help for `Output contract: passthrough`. Older builds discard target output and implement a different lifecycle; do not use them for the current workflow. Current packages include PRODUCT-CONTRACT.md and the skill source folder, but installing the application does not install or advertise the skill. The optional Invoke-Handoff.ps1 is only a JSON compatibility entry point; it adds no caller binding or status banner. See [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Automated releases
 

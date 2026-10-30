@@ -3,73 +3,53 @@ namespace SecretHandoff;
 internal static class CliHelp
 {
     internal const string Text = """
-        Secret Handoff – local manual secret approval (synthetic prototype)
+        Secret Handoff – local approval for trusted programs
+        Output contract: passthrough
 
         Usage:
-          SecretHandoff.exe
-          SecretHandoff.exe --help
-          SecretHandoff.exe --request ABSOLUTE_JSON_PATH [--watch-parent PID FILETIME]
           SecretHandoff.exe --secret NAME [--description TEXT] [--secret NAME ...]
-            [--working-directory DIRECTORY] [--watch-parent PID FILETIME] -- ABSOLUTE_PROGRAM.exe [ARGUMENTS...]
+            [--working-directory DIRECTORY] -- ABSOLUTE_PROGRAM.exe [ARGUMENTS...]
+          SecretHandoff.exe --request ABSOLUTE_JSON_PATH
+          SecretHandoff.exe --help
+          SecretHandoff.exe
 
-        Options (exact spelling; no short forms or --option=value):
-          --help                 Standalone only: help on stdout, exit 0, no dialog.
-          --request PATH         Existing JSON contract; absolute local file path.
-          --secret NAME          Direct mode, 1–16 required names, never values.
-          --description TEXT     Optional immediately after --secret NAME, once per secret.
-                                 Default: empty; at most 512 characters, no control characters.
-          --working-directory D  Direct mode only, once; default: caller's working directory
-                                 captured at invocation. Relative directories resolve against
-                                 that snapshot. Must be an existing local directory.
-          --watch-parent P T     Optional in either mode, once: positive PID (not this process)
-                                 and Windows creation time as decimal UTC FILETIME.
-                                 Termination of that exact verified process cancels the task.
-          --                     Required in direct mode. EVERYTHING after it belongs to the
-                                 target, including --help, --secret, or further -- separators.
+        Values are entered only in the local masked dialog. Arguments contain metadata only.
+        --secret: 1–16 names; optional description immediately follows its name.
+        --working-directory: existing directory, default captured caller directory.
+        --: everything afterward belongs to the target, including launcher-like options.
+        --request: optional metadata-only JSON, cannot be mixed with direct mode.
+        No arguments opens a request picker. --help must be used alone.
+        Names use ASCII letters/digits/underscores, beginning with a letter or underscore,
+        max 128 characters; no duplicate names or reserved runtime controls.
+        Values: nonempty single-line text, max 16,384 UTF-16 code units, preserved exactly.
+        At most 128 arguments; Windows encoded command-line limit applies.
+        Explicit executable path; no implicit shell evaluation or PATH lookup.
+        Filesystem links and mapped paths are supported. Preview is not a code identity check.
 
-        No options: local file picker. JSON and direct modes cannot be combined.
-        --request, --working-directory, and --watch-parent may each appear only once.
-        Other option ordering is free; descriptions immediately follow their secret.
-        Option values must not start with --. Empty descriptions are allowed.
-        Program: existing absolute local EXE path; no PATH lookup or shell evaluation.
-        Arguments: at most 128 individual strings, including empty strings; quote them using
-        your shell's rules. The launcher does not expand variables. Names: ASCII letter or
-        underscore, followed by letters/digits/underscores, at most 128 characters;
-        no case-insensitive duplicates or reserved environment/runtime names (ARCHITECTURE.md).
-        No network/device/SUBST paths, reparse points, or drive-relative directories.
+        After approval the trusted target receives ordinary runtime configuration and the
+        entered secrets. Arbitrary ambient credentials are not inherited.
+        Target stdout and stderr pass unchanged to the caller, including intended credentials
+        or data results. The launcher does not filter output or emit the input secrets itself.
+        Stdin is closed/NUL. Use an explicit interpreter EXE for an SDK-based script.
+        No request file, module, or provider integration is needed for direct agent use.
 
-        Examples (synthetic names; enter values only in the local masked dialog):
-          SecretHandoff.exe --secret API_TOKEN -- "C:\Tools\Worker.exe" --mode check
-          SecretHandoff.exe --secret API_TOKEN --description "API for this test task" --secret SECOND_SECRET --working-directory "D:\Projects\Example" -- "C:\Tools\Worker.exe" --help
-          SecretHandoff.exe --secret API_TOKEN --working-directory ".\Subfolder" -- "C:\Tools\Worker.exe"
-          SecretHandoff.exe --request "D:\Projects\Example\task.handoff.json"
+        Wait for the direct target; return automatically without result dismissal.
+        No fixed runtime limit, single-request lock, process-tree supervision or caller watch.
+        Local Stop/closing the running window stops only the direct target. Descendants
+        manage their own lifetime. Agent Stop or launcher exit may leave work running.
+        The retired --watch-caller and --watch-parent options are rejected.
+        Desktop launches without output handles have no output recipient.
+        Returned results may be sensitive; the user approves their delivery to the caller.
 
-        Before launch: complete preview and explicit approval. No value parameters,
-        automatic approval, or input reuse. No temporary JSON file in direct mode.
-        Approval: 5 minutes; execution: 15 minutes; cleanup budget: 5 seconds.
-        Target output is discarded. Minimal target environment; descendants can inherit values.
-        An approved program can disclose values; Job Objects are not a sandbox.
-
-        Terminal: invoke the EXE directly in PowerShell (& .\SecretHandoff.exe ...) or cmd.
-        Both wait until the result window is dismissed. Read the exit code afterward:
-        PowerShell: $LASTEXITCODE; cmd: %ERRORLEVEL% (on the next separate line).
-        Do not use start/Start-Process without waiting. GUI use needs no prepared terminal.
-        On Windows 11 24H2 and later, the manifest avoids allocating a new console;
-        older Windows versions may also open a console during desktop launch.
-        Direct invocation is unbound without --watch-parent. Agent cancellation is detected
-        only if the launcher or bound process ends; merely stopping a wait is insufficient.
-        scripts/Invoke-Handoff.ps1 binds its own PowerShell process in JSON mode.
-
-        Exit codes (target code appears only in the local dialog; it is not passed through):
-          0 COMPLETED        Target exit 0 and confirmed cleanup; also successful help
-          2 CANCELLED        User cancellation or caller termination
-          3 TIMED_OUT        Approval or execution timeout
-          4 BUSY             Another request is active
-          5 INVALID_REQUEST  Invalid CLI, contract, path, or secret name
-          6 START_FAILED     Managed launch or caller monitoring failed
-          7 TARGET_FAILED    Nonzero target exit with confirmed cleanup
-          8 INTERNAL_ERROR   Internal failure
-          9 CLEANUP_FAILED   Cleanup not confirmed (takes precedence)
-        CLI errors: short fixed stderr diagnosis, no approval dialog, no raw input.
+        Launcher exit codes (target exit code is not passed through):
+          0 COMPLETED        Target exited 0; also standalone help
+          2 CANCELLED        Local cancellation
+          5 INVALID_REQUEST  Invalid metadata, path or name
+          6 START_FAILED     Target could not start
+          7 TARGET_FAILED    Target exited nonzero; its output is still returned
+          8 INTERNAL_ERROR   Launcher failure
+          9 STOP_FAILED      Direct target termination could not be confirmed
+        No completion banner is added to target stdout/stderr.
+        PowerShell: read $LASTEXITCODE. cmd: read %ERRORLEVEL% on the next line.
         """;
 }
